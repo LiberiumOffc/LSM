@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LSM Mobile – Lua Script Maker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Rajdhani:wght@500;600;700&display=swap');
+
+:root {
+  --bg:      #0c0c10;
+  --bg2:     #14141a;
+  --bg3:     #1c1c24;
+  --bg4:     #24242e;
+  --border:  #2a2a36;
+  --accent:  #00d4ff;
+  --accent2: #7c3aed;
+  --green:   #10b981;
+  --pink:    #ec4899;
+  --warn:    #f59e0b;
+  --danger:  #ef4444;
+  --text:    #e2e2ec;
+  --text2:   #7a7a96;
+  --panel:   #10101a;
+  --radius:  10px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:'JetBrains Mono',monospace; }
+
+/* ── LAYOUT ── */
+#app { display:flex; flex-direction:column; height:100dvh; overflow:hidden; }
+
+/* ── TOP BAR ── */
+#topbar {
+  height:48px; flex-shrink:0;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:8px;
+  padding:0 12px;
+  position:relative; z-index:100;
+}
+.logo {
+  font-family:'Rajdhani',sans-serif; font-weight:700;
+  font-size:18px; letter-spacing:4px; color:var(--accent);
+}
+.logo span { color:var(--text2); font-size:11px; letter-spacing:1px; margin-left:6px; }
+#topbar-right { margin-left:auto; display:flex; gap:6px; }
+.top-btn {
+  width:36px; height:36px; border-radius:8px;
+  border:1px solid var(--border); background:var(--bg3);
+  color:var(--text2); font-size:16px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all .15s;
+}
+.top-btn:active { background:var(--bg4); color:var(--accent); transform:scale(.93); }
+.top-btn.accent { background:var(--accent); color:#000; border-color:var(--accent); }
+.top-btn.accent:active { filter:brightness(1.2); }
+
+/* ── MAIN ── */
+#main { flex:1; display:flex; overflow:hidden; position:relative; }
+
+/* ── LEFT DRAWER ── */
+#drawer {
+  position:fixed; left:0; top:48px; bottom:0;
+  width:220px; background:var(--panel);
+  border-right:1px solid var(--border);
+  z-index:90; transform:translateX(-100%);
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+#drawer.open { transform:translateX(0); }
+#drawer-overlay {
+  position:fixed; inset:0; top:48px;
+  background:rgba(0,0,0,.55);
+  z-index:89; display:none;
+}
+#drawer-overlay.open { display:block; }
+
+.drawer-head {
+  padding:10px 12px 6px;
+  font-family:'Rajdhani',sans-serif; font-weight:700;
+  font-size:10px; color:var(--accent); letter-spacing:3px;
+  text-transform:uppercase; border-bottom:1px solid var(--border);
+  background:var(--bg2);
+}
+.drawer-scroll { flex:1; overflow-y:auto; padding:6px 8px; }
+.cat-label {
+  font-size:9px; color:var(--accent2); text-transform:uppercase;
+  letter-spacing:2px; padding:8px 4px 3px;
+  font-family:'Rajdhani',sans-serif; font-weight:700;
+}
+.part-item {
+  display:flex; align-items:center; gap:10px;
+  padding:9px 10px; border-radius:8px;
+  border:1px solid transparent; margin-bottom:3px;
+  cursor:pointer; font-size:12px; color:var(--text2);
+  transition:all .12s; user-select:none;
+}
+.part-item:active { background:var(--bg4); color:var(--accent); border-color:var(--border); transform:scale(.97); }
+.part-icon { font-size:16px; }
+.part-name { font-family:'Rajdhani',sans-serif; font-weight:600; letter-spacing:.5px; }
+
+/* ── CANVAS WRAPPER ── */
+#canvas-wrap { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+#canvas-area {
+  flex:1; position:relative; overflow:auto;
+  background:
+    linear-gradient(rgba(0,212,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,.025) 1px, transparent 1px);
+  background-size:18px 18px;
+  background-color:var(--bg);
+  touch-action:none;
+}
+
+#canvas {
+  position:absolute;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  background:#18181f;
+  box-shadow:0 0 0 1px var(--border), 0 8px 60px rgba(0,0,0,.7);
+  /* size set by JS */
+}
+
+/* ── ELEMENTS ── */
+.el {
+  position:absolute;
+  touch-action:none;
+  box-sizing:border-box;
+}
+.el.sel::after {
+  content:'';
+  position:absolute; inset:-2px;
+  border:2px solid var(--accent);
+  border-radius:inherit;
+  pointer-events:none; z-index:20;
+}
+.el-resize {
+  position:absolute; right:-1px; bottom:-1px;
+  width:20px; height:20px;
+  background:var(--accent); border:2px solid #000;
+  border-radius:4px 0 4px 0;
+  display:none; align-items:center; justify-content:center;
+  font-size:9px; color:#000; z-index:21; cursor:se-resize;
+  touch-action:none;
+}
+.el.sel .el-resize { display:flex; }
+
+/* type styles */
+.t-frame    { background:rgba(28,28,38,.92); border:1px solid rgba(255,255,255,.1); }
+.t-button   { background:#2e2e40; border:1px solid #4a4a66; display:flex; align-items:center; justify-content:center; }
+.t-textbox  { background:rgba(0,0,0,.45); border:1px solid #383848; }
+.t-label    { background:transparent; border:none; display:flex; align-items:center; }
+.t-checkbox { background:transparent; border:none; display:flex; align-items:center; gap:8px; }
+.t-slider   { background:transparent; border:none; display:flex; align-items:center; }
+.t-dropdown { background:#1c1c2a; border:1px solid #3a3a50; }
+.t-sep      { background:#444; border:none; }
+
+/* rainbow */
+@keyframes rbw { 0%{color:#fff} 16%{color:var(--accent)} 33%{color:var(--accent2)} 50%{color:var(--green)} 66%{color:var(--warn)} 83%{color:var(--danger)} 100%{color:#fff} }
+.rbw { animation:rbw 2.5s linear infinite; }
+
+/* neon */
+.neon-blue   { box-shadow:0 0 8px #00d4ff,0 0 22px rgba(0,212,255,.25)!important; border-color:#00d4ff!important; }
+.neon-purple { box-shadow:0 0 8px #7c3aed,0 0 22px rgba(124,58,237,.25)!important; border-color:#7c3aed!important; }
+.neon-green  { box-shadow:0 0 8px #10b981,0 0 22px rgba(16,185,129,.25)!important; border-color:#10b981!important; }
+.neon-pink   { box-shadow:0 0 8px #ec4899,0 0 22px rgba(236,72,153,.25)!important; border-color:#ec4899!important; }
+
+/* ── PROPS SHEET ── */
+#props-sheet {
+  position:fixed; left:0; right:0; bottom:0;
+  background:var(--bg2); border-top:1px solid var(--border);
+  z-index:80; border-radius:16px 16px 0 0;
+  transform:translateY(100%);
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  max-height:75vh; display:flex; flex-direction:column;
+  overflow:hidden;
+}
+#props-sheet.open { transform:translateY(0); }
+
+#sheet-handle {
+  width:36px; height:4px; background:var(--border);
+  border-radius:2px; margin:10px auto 0;
+  flex-shrink:0; cursor:pointer;
+}
+#sheet-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 16px 6px; flex-shrink:0;
+}
+#sheet-title { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:14px; color:var(--accent); letter-spacing:1px; }
+#sheet-close { font-size:20px; color:var(--text2); cursor:pointer; padding:4px; line-height:1; }
+#sheet-body { flex:1; overflow-y:auto; padding:8px 16px 24px; }
+
+.s-section { margin-bottom:14px; }
+.s-sec-hd {
+  font-size:9px; color:var(--accent2); text-transform:uppercase;
+  letter-spacing:2px; padding-bottom:6px;
+  border-bottom:1px solid var(--border); margin-bottom:8px;
+  font-family:'Rajdhani',sans-serif; font-weight:700;
+}
+.s-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.s-label { font-size:11px; color:var(--text2); width:72px; flex-shrink:0; }
+.s-input {
+  flex:1; background:var(--bg3); border:1px solid var(--border);
+  color:var(--text); font-family:'JetBrains Mono',monospace;
+  font-size:11px; padding:6px 8px; border-radius:6px; outline:none;
+}
+.s-input:focus { border-color:var(--accent); }
+.s-color { width:36px; height:30px; border:1px solid var(--border); background:none; border-radius:6px; cursor:pointer; padding:0 3px; }
+.s-range { flex:1; accent-color:var(--accent); }
+.s-check { accent-color:var(--accent); width:18px; height:18px; }
+.s-select { flex:1; background:var(--bg3); border:1px solid var(--border); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:11px; padding:6px 6px; border-radius:6px; outline:none; }
+.neon-row { display:flex; gap:6px; flex-wrap:wrap; }
+.nb {
+  padding:5px 10px; font-size:10px; border:1px solid;
+  background:transparent; cursor:pointer; border-radius:5px;
+  font-family:'Rajdhani',sans-serif; font-weight:700; letter-spacing:1px;
+  transition:all .1s;
+}
+.nb:active { filter:brightness(1.4); transform:scale(.95); }
+.nb-none   { color:#888; border-color:#555; }
+.nb-blue   { color:#00d4ff; border-color:#00d4ff; }
+.nb-purple { color:#7c3aed; border-color:#7c3aed; }
+.nb-green  { color:#10b981; border-color:#10b981; }
+.nb-pink   { color:#ec4899; border-color:#ec4899; }
+
+/* ── SCRIPT MODAL ── */
+.modal-bg {
+  position:fixed; inset:0; background:rgba(0,0,0,.75);
+  z-index:200; display:none; align-items:flex-end;
+}
+.modal-bg.open { display:flex; }
+.modal-card {
+  width:100%; background:var(--bg2);
+  border-radius:16px 16px 0 0;
+  border-top:1px solid var(--border);
+  padding:0 0 env(safe-area-inset-bottom);
+  max-height:90vh; display:flex; flex-direction:column;
+}
+.modal-drag-bar { width:36px; height:4px; background:var(--border); border-radius:2px; margin:10px auto 0; }
+.modal-hd {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px 8px; border-bottom:1px solid var(--border);
+}
+.modal-hd-title { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:14px; color:var(--accent); letter-spacing:1px; }
+.modal-hd-close { color:var(--text2); font-size:22px; line-height:1; cursor:pointer; padding:4px; }
+.modal-body { flex:1; overflow-y:auto; padding:12px 14px; }
+#script-editor {
+  width:100%; height:220px;
+  background:#08080f; border:1px solid var(--border);
+  color:var(--text); font-family:'JetBrains Mono',monospace;
+  font-size:12px; line-height:1.7; padding:10px;
+  border-radius:8px; outline:none; resize:none;
+}
+#script-editor:focus { border-color:var(--accent); }
+.snippet-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+.snip-btn {
+  padding:5px 10px; font-size:10px;
+  background:var(--bg3); border:1px solid var(--border);
+  color:var(--text2); border-radius:6px; cursor:pointer;
+  font-family:'JetBrains Mono',monospace;
+  transition:all .1s;
+}
+.snip-btn:active { background:var(--bg4); color:var(--accent); }
+.modal-footer {
+  display:flex; gap:8px; padding:10px 14px;
+  border-top:1px solid var(--border); flex-shrink:0;
+}
+.btn {
+  padding:10px 16px; font-size:12px; font-family:'JetBrains Mono',monospace;
+  border-radius:8px; border:1px solid; cursor:pointer; font-weight:600;
+  transition:all .12s;
+}
+.btn:active { transform:scale(.96); }
+.btn-p { background:var(--accent); color:#000; border-color:var(--accent); flex:1; }
+.btn-s { background:transparent; color:var(--text2); border-color:var(--border); }
+.btn-d { background:transparent; color:var(--danger); border-color:var(--danger); }
+
+/* ── BOTTOM NAV ── */
+#bottom-nav {
+  height:54px; flex-shrink:0;
+  background:var(--bg2); border-top:1px solid var(--border);
+  display:flex; align-items:center;
+  padding:0 8px; gap:4px;
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
+}
+#bottom-nav::-webkit-scrollbar { display:none; }
+.nav-btn {
+  flex-shrink:0; min-width:48px; height:40px;
+  border-radius:8px; border:1px solid var(--border);
+  background:var(--bg3); color:var(--text2);
+  font-size:11px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:1px;
+  cursor:pointer; padding:0 8px; transition:all .12s;
+}
+.nav-btn:active { background:var(--bg4); color:var(--accent); transform:scale(.93); border-color:var(--accent); }
+.nav-btn .nb-icon { font-size:16px; line-height:1; }
+.nav-btn .nb-label { font-size:8px; letter-spacing:.5px; font-family:'Rajdhani',sans-serif; font-weight:600; }
+.nav-sep { width:1px; height:28px; background:var(--border); flex-shrink:0; margin:0 2px; }
+
+/* ── TOAST ── */
+#toast {
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:#000; border:1px solid var(--border);
+  color:var(--text2); padding:8px 18px; border-radius:20px;
+  font-size:11px; z-index:300; opacity:0; transition:all .25s;
+  white-space:nowrap; pointer-events:none;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:var(--bg2); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* ── CONFIRM DIALOG ── */
+#confirm-bg { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:250; display:none; align-items:center; justify-content:center; }
+#confirm-bg.open { display:flex; }
+.confirm-card { background:var(--bg3); border:1px solid var(--border); border-radius:14px; padding:22px 20px; width:280px; text-align:center; }
+.confirm-title { font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:700; color:var(--text); margin-bottom:8px; }
+.confirm-msg { font-size:11px; color:var(--text2); margin-bottom:18px; line-height:1.6; }
+.confirm-btns { display:flex; gap:10px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <div class="logo">LSM<span>Lua Script Maker</span></div>
+    <div id="topbar-right">
+      <div class="top-btn" onclick="toggleDrawer()" title="Components">☰</div>
+      <div class="top-btn" onclick="undoAction()" title="Undo">↩</div>
+      <div class="top-btn" onclick="redoAction()" title="Redo">↪</div>
+      <div class="top-btn accent" onclick="saveLua()" title="Export .lua">⬇</div>
+    </div>
+  </div>
+
+  <!-- DRAWER OVERLAY -->
+  <div id="drawer-overlay" onclick="closeDrawer()"></div>
+
+  <!-- LEFT DRAWER -->
+  <div id="drawer">
+    <div class="drawer-head">🧩 COMPONENTS</div>
+    <div class="drawer-scroll">
+      <div class="cat-label">Layout</div>
+      <div class="part-item" onclick="addEl('frame');closeDrawer()"><span class="part-icon">⬛</span><span class="part-name">Frame</span></div>
+      <div class="part-item" onclick="addEl('separator');closeDrawer()"><span class="part-icon">─</span><span class="part-name">Separator</span></div>
+
+      <div class="cat-label">Controls</div>
+      <div class="part-item" onclick="addEl('button');closeDrawer()"><span class="part-icon">🔲</span><span class="part-name">Button</span></div>
+      <div class="part-item" onclick="addEl('checkbox');closeDrawer()"><span class="part-icon">☑️</span><span class="part-name">CheckBox</span></div>
+      <div class="part-item" onclick="addEl('slider');closeDrawer()"><span class="part-icon">🎚️</span><span class="part-name">Slider</span></div>
+      <div class="part-item" onclick="addEl('dropdown');closeDrawer()"><span class="part-icon">🔽</span><span class="part-name">DropDown</span></div>
+
+      <div class="cat-label">Display</div>
+      <div class="part-item" onclick="addEl('label');closeDrawer()"><span class="part-icon">🏷️</span><span class="part-name">Label</span></div>
+      <div class="part-item" onclick="addEl('textbox');closeDrawer()"><span class="part-icon">✏️</span><span class="part-name">TextBox</span></div>
+
+      <div class="cat-label">Snippets</div>
+      <div class="part-item" onclick="openSnippet('notify');closeDrawer()"><span class="part-icon">🔔</span><span class="part-name">Notify</span></div>
+      <div class="part-item" onclick="openSnippet('loop');closeDrawer()"><span class="part-icon">🔁</span><span class="part-name">Loop</span></div>
+      <div class="part-item" onclick="openSnippet('tween');closeDrawer()"><span class="part-icon">🎞️</span><span class="part-name">Tween</span></div>
+      <div class="part-item" onclick="openSnippet('remote');closeDrawer()"><span class="part-icon">📡</span><span class="part-name">RemoteEvent</span></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="canvas-wrap">
+      <div id="canvas-area">
+        <div id="canvas"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div id="bottom-nav">
+    <div class="nav-btn" onclick="toggleDrawer()"><span class="nb-icon">🧩</span><span class="nb-label">ADD</span></div>
+    <div class="nav-sep"></div>
+    <div class="nav-btn" onclick="deleteSelected()"><span class="nb-icon">🗑</span><span class="nb-label">DEL</span></div>
+    <div class="nav-btn" onclick="duplicateSelected()"><span class="nb-icon">⧉</span><span class="nb-label">COPY</span></div>
+    <div class="nav-sep"></div>
+    <div class="nav-btn" onclick="alignEl('left')"><span class="nb-icon">⬅</span><span class="nb-label">LEFT</span></div>
+    <div class="nav-btn" onclick="alignEl('center')"><span class="nb-icon">↔</span><span class="nb-label">CTR</span></div>
+    <div class="nav-btn" onclick="alignEl('right')"><span class="nb-icon">➡</span><span class="nb-label">RIGHT</span></div>
+    <div class="nav-btn" onclick="alignEl('top')"><span class="nb-icon">⬆</span><span class="nb-label">TOP</span></div>
+    <div class="nav-btn" onclick="alignEl('middle')"><span class="nb-icon">↕</span><span class="nb-label">MID</span></div>
+    <div class="nav-btn" onclick="alignEl('bottom')"><span class="nb-icon">⬇</span><span class="nb-label">BOT</span></div>
+    <div class="nav-sep"></div>
+    <div class="nav-btn" onclick="bringFront()"><span class="nb-icon">▲</span><span class="nb-label">FRONT</span></div>
+    <div class="nav-btn" onclick="sendBack()"><span class="nb-icon">▼</span><span class="nb-label">BACK</span></div>
+    <div class="nav-sep"></div>
+    <div class="nav-btn" onclick="generateLua();showToast('Lua generated!')"><span class="nb-icon">⚡</span><span class="nb-label">GEN</span></div>
+    <div class="nav-btn" onclick="saveLua()" style="color:var(--accent);border-color:var(--accent)"><span class="nb-icon">💾</span><span class="nb-label">SAVE</span></div>
+  </div>
+</div>
+
+<!-- PROPERTIES SHEET -->
+<div id="props-sheet">
+  <div id="sheet-handle" onclick="closeSheet()"></div>
+  <div id="sheet-header">
+    <div id="sheet-title">Properties</div>
+    <div id="sheet-close" onclick="closeSheet()">×</div>
+  </div>
+  <div id="sheet-body"></div>
+</div>
+
+<!-- SCRIPT MODAL -->
+<div class="modal-bg" id="script-modal">
+  <div class="modal-card">
+    <div class="modal-drag-bar"></div>
+    <div class="modal-hd">
+      <div class="modal-hd-title">✏️ Script — <span id="sm-elname"></span></div>
+      <div class="modal-hd-close" onclick="closeScript()">×</div>
+    </div>
+    <div class="modal-body">
+      <div id="sm-event" style="font-size:10px;color:var(--text2);margin-bottom:6px;"></div>
+      <textarea id="script-editor" spellcheck="false"></textarea>
+      <div class="snippet-row">
+        <div class="snip-btn" onclick="injectCode('print(\"Hello\")')">print()</div>
+        <div class="snip-btn" onclick="injectCode('wait(0.1)')">wait()</div>
+        <div class="snip-btn" onclick="injectCode('game.Players.LocalPlayer')">LocalPlayer</div>
+        <div class="snip-btn" onclick="injectCode('Instance.new(\"Part\")')">Instance.new</div>
+        <div class="snip-btn" onclick="injectCode('game.Workspace')">Workspace</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div class="btn btn-d" onclick="clearSc()">Clear</div>
+      <div style="flex:1"></div>
+      <div class="btn btn-s" onclick="closeScript()">Cancel</div>
+      <div class="btn btn-p" onclick="saveScript()">Save</div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div id="confirm-bg">
+  <div class="confirm-card">
+    <div class="confirm-title" id="conf-title">Confirm</div>
+    <div class="confirm-msg"  id="conf-msg">Are you sure?</div>
+    <div class="confirm-btns">
+      <div class="btn btn-s" style="flex:1" id="conf-cancel">Cancel</div>
+      <div class="btn btn-d" style="flex:1" id="conf-ok">Delete</div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let elements = [];
+let sel = null;
+let idCnt = 1;
+let projectName = 'untitled';
+let undoStack = [], redoStack = [];
+let scriptTarget = null;
+let globalScript = '-- Global Lua script\n';
+let CW = 320, CH = 420;
+
+const canvas = document.getElementById('canvas');
+
+function getEl(id)  { return elements.find(e=>e.id===id); }
+function getDom(id) { return document.getElementById('el-'+id); }
+
+// ─── CANVAS INIT ──────────────────────────────────────────────────────────────
+function initCanvas() {
+  const vw = window.innerWidth;
+  CW = Math.min(380, vw - 32);
+  CH = Math.round(CW * 1.3);
+  canvas.style.width  = CW+'px';
+  canvas.style.height = CH+'px';
+
+  // default Frame
+  addEl('frame', Math.round(CW/2 - 140), Math.round(CH/2 - 90), 'MainFrame', false);
+}
+
+// ─── ADD ELEMENT ──────────────────────────────────────────────────────────────
+function addEl(type, x, y, label, doUndo=true) {
+  if (doUndo) saveUndo();
+  const id = idCnt++;
+  const defs = {
+    frame:    { w:200, h:140, bg:'#1e1e2a', border:'#444', opacity:1, radius:6,  shadow:0,  neon:'none', text:'',         textColor:'#fff',    rbw:false },
+    button:   { w:110, h:32,  bg:'#2e2e40', border:'#5a5a70', opacity:1, radius:6,  shadow:3,  neon:'none', text:'Click me', textColor:'#fff',    rbw:false },
+    textbox:  { w:150, h:32,  bg:'#0e0e18', border:'#383848', opacity:1, radius:5,  shadow:0,  neon:'none', text:'',         textColor:'#e2e2e8', rbw:false },
+    label:    { w:130, h:24,  bg:'transparent', border:'transparent', opacity:1, radius:0, shadow:0, neon:'none', text:'Label Text', textColor:'#e2e2e8', rbw:false },
+    checkbox: { w:120, h:22,  bg:'transparent', border:'transparent', opacity:1, radius:0, shadow:0, neon:'none', text:'Check me',   textColor:'#e2e2e8', rbw:false },
+    slider:   { w:150, h:24,  bg:'transparent', border:'transparent', opacity:1, radius:0, shadow:0, neon:'none', text:'Slider',     textColor:'#e2e2e8', rbw:false },
+    dropdown: { w:140, h:30,  bg:'#1c1c2a', border:'#3a3a50', opacity:1, radius:5, shadow:0, neon:'none', text:'Option 1\nOption 2\nOption 3', textColor:'#e2e2e8', rbw:false },
+    separator:{ w:180, h:2,   bg:'#444',    border:'#444',    opacity:1, radius:0, shadow:0, neon:'none', text:'', textColor:'#888', rbw:false },
+  };
+  const d = defs[type] || defs.frame;
+  const lbl = label || (type.charAt(0).toUpperCase()+type.slice(1)+'_'+id);
+  const ex = typeof x==='number' ? x : Math.round(CW/2 - d.w/2);
+  const ey = typeof y==='number' ? y : Math.round(CH/2 - d.h/2);
+  const el = { id, type, x:ex, y:ey, z:id, label:lbl, script:`-- ${lbl} script\n`, ...d };
+  elements.push(el);
+  renderEl(el);
+  selectEl(id);
+  showToast(`+ ${lbl}`);
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderEl(el) {
+  let dom = getDom(el.id);
+  if (!dom) {
+    dom = document.createElement('div');
+    dom.id = 'el-'+el.id;
+    dom.className = 'el';
+    canvas.appendChild(dom);
+    attachTouch(dom, el.id);
+
+    // double tap = open script
+    let lastTap = 0;
+    dom.addEventListener('touchstart', e=>{
+      const now = Date.now();
+      if (now - lastTap < 350) { openScript(el.id); e.preventDefault(); }
+      lastTap = now;
+    }, {passive:false});
+
+    const rh = document.createElement('div');
+    rh.className = 'el-resize';
+    rh.innerHTML = '↘';
+    attachResizeTouch(rh, el.id);
+    dom.appendChild(rh);
+  }
+
+  dom.style.cssText = `
+    left:${el.x}px; top:${el.y}px;
+    width:${el.w}px; height:${el.h}px;
+    z-index:${el.z};
+    opacity:${el.opacity};
+    border-radius:${el.radius}px;
+    box-sizing:border-box;
+  `;
+
+  // neon
+  const neonMap = { blue:'neon-blue', purple:'neon-purple', green:'neon-green', pink:'neon-pink' };
+  ['neon-blue','neon-purple','neon-green','neon-pink'].forEach(c=>dom.classList.remove(c));
+  if (el.neon !== 'none' && neonMap[el.neon]) dom.classList.add(neonMap[el.neon]);
+
+  // shadow (if no neon)
+  if (el.shadow && el.neon === 'none') {
+    dom.style.boxShadow = `0 ${el.shadow}px ${el.shadow*3}px rgba(0,0,0,.6)`;
+  }
+
+  // remove inner content (rebuild)
+  const rh = dom.querySelector('.el-resize');
+  dom.innerHTML = '';
+  dom.appendChild(rh);
+
+  // type-specific style & inner
+  dom.className = `el t-${el.type}`;
+  dom.appendChild(rh);
+  dom.style.borderRadius = el.radius+'px';
+  if (el.neon !== 'none' && neonMap[el.neon]) dom.classList.add(neonMap[el.neon]);
+
+  if (el.type === 'frame') {
+    dom.style.background   = el.bg.startsWith('t') ? 'transparent' : el.bg;
+    dom.style.borderColor  = el.border.startsWith('t') ? 'transparent' : el.border;
+    dom.style.borderStyle  = 'solid'; dom.style.borderWidth = '1px';
+    if (el.shadow && el.neon==='none') dom.style.boxShadow=`0 ${el.shadow}px ${el.shadow*3}px rgba(0,0,0,.6)`;
+
+  } else if (el.type === 'button') {
+    dom.style.background  = el.bg;
+    dom.style.borderColor = el.border;
+    dom.style.borderStyle = 'solid'; dom.style.borderWidth = '1px';
+    if (el.shadow && el.neon==='none') dom.style.boxShadow=`0 ${el.shadow}px ${el.shadow*2}px rgba(0,0,0,.5)`;
+    const sp = document.createElement('span');
+    sp.textContent = el.text;
+    sp.style.cssText = `color:${el.textColor};font-family:'JetBrains Mono',monospace;font-size:12px;pointer-events:none;`;
+    if (el.rbw) sp.classList.add('rbw');
+    dom.insertBefore(sp, rh);
+
+  } else if (el.type === 'textbox') {
+    dom.style.background  = el.bg;
+    dom.style.borderColor = el.border;
+    dom.style.borderStyle = 'solid'; dom.style.borderWidth = '1px';
+    const ta = document.createElement('textarea');
+    ta.style.cssText = `width:100%;height:100%;background:transparent;border:none;outline:none;resize:none;color:${el.textColor};font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 6px;box-sizing:border-box;`;
+    ta.placeholder = 'TextBox...';
+    dom.insertBefore(ta, rh);
+
+  } else if (el.type === 'label') {
+    const sp = document.createElement('span');
+    sp.textContent = el.text;
+    sp.style.cssText = `color:${el.textColor};font-family:'JetBrains Mono',monospace;font-size:12px;pointer-events:none;`;
+    if (el.rbw) sp.classList.add('rbw');
+    dom.insertBefore(sp, rh);
+
+  } else if (el.type === 'checkbox') {
+    dom.style.cssText += 'display:flex;align-items:center;gap:8px;';
+    const cb = document.createElement('input');
+    cb.type='checkbox'; cb.style.accentColor='#00d4ff'; cb.style.width='16px'; cb.style.height='16px';
+    const sp = document.createElement('span');
+    sp.textContent = el.text;
+    sp.style.cssText = `color:${el.textColor};font-size:12px;font-family:'JetBrains Mono',monospace;pointer-events:none;`;
+    if (el.rbw) sp.classList.add('rbw');
+    dom.insertBefore(cb, rh); dom.insertBefore(sp, rh);
+
+  } else if (el.type === 'slider') {
+    dom.style.cssText += 'display:flex;align-items:center;';
+    const inp = document.createElement('input');
+    inp.type='range'; inp.min=0; inp.max=100; inp.value=50;
+    inp.style.cssText = 'width:100%;accent-color:#00d4ff;';
+    dom.insertBefore(inp, rh);
+
+  } else if (el.type === 'dropdown') {
+    dom.style.background  = el.bg;
+    dom.style.borderColor = el.border;
+    dom.style.borderStyle = 'solid'; dom.style.borderWidth = '1px';
+    const sel = document.createElement('select');
+    el.text.split('\n').forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; sel.appendChild(opt); });
+    sel.style.cssText = `width:100%;height:100%;background:transparent;border:none;color:${el.textColor};font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;padding:2px 6px;`;
+    dom.insertBefore(sel, rh);
+
+  } else if (el.type === 'separator') {
+    dom.style.background = el.bg; dom.style.height = '2px';
+  }
+
+  if (sel === el.id) dom.classList.add('sel');
+}
+
+// ─── TOUCH DRAG ───────────────────────────────────────────────────────────────
+function attachTouch(dom, id) {
+  let startX, startY, elX, elY, moved;
+
+  dom.addEventListener('touchstart', e=>{
+    if (e.target.classList.contains('el-resize')) return;
+    selectEl(id);
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    const el = getEl(id); elX = el.x; elY = el.y;
+    moved = false;
+    e.stopPropagation();
+  }, {passive:true});
+
+  dom.addEventListener('touchmove', e=>{
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    if (Math.abs(dx)>4 || Math.abs(dy)>4) moved = true;
+    const el = getEl(id);
+    el.x = Math.max(0, Math.min(CW - el.w, elX + dx));
+    el.y = Math.max(0, Math.min(CH - el.h, elY + dy));
+    dom.style.left = el.x+'px';
+    dom.style.top  = el.y+'px';
+    e.preventDefault();
+  }, {passive:false});
+
+  dom.addEventListener('touchend', e=>{
+    if (moved) { const el=getEl(id); updateSheetPos(el); }
+    e.stopPropagation();
+  });
+}
+
+// ─── TOUCH RESIZE ─────────────────────────────────────────────────────────────
+function attachResizeTouch(rh, id) {
+  let sx, sy, sw, sh;
+  rh.addEventListener('touchstart', e=>{
+    const t = e.touches[0];
+    sx = t.clientX; sy = t.clientY;
+    const el = getEl(id); sw = el.w; sh = el.h;
+    e.stopPropagation(); e.preventDefault();
+  }, {passive:false});
+  rh.addEventListener('touchmove', e=>{
+    const t = e.touches[0];
+    const el = getEl(id);
+    el.w = Math.max(24, sw + (t.clientX - sx));
+    el.h = Math.max(10, sh + (t.clientY - sy));
+    const dom = getDom(id);
+    dom.style.width  = el.w+'px';
+    dom.style.height = el.h+'px';
+    e.preventDefault();
+  }, {passive:false});
+  rh.addEventListener('touchend', e=>{
+    const el=getEl(id); updateSheetPos(el);
+    e.stopPropagation();
+  });
+}
+
+// ─── CANVAS BACKGROUND TAP ────────────────────────────────────────────────────
+document.getElementById('canvas-area').addEventListener('touchstart', e=>{
+  if (e.target===document.getElementById('canvas-area')||e.target===canvas) {
+    selectEl(null);
+  }
+});
+
+// ─── SELECT ───────────────────────────────────────────────────────────────────
+function selectEl(id) {
+  document.querySelectorAll('.el').forEach(d=>d.classList.remove('sel'));
+  sel = id;
+  if (id) {
+    const dom = getDom(id);
+    if (dom) dom.classList.add('sel');
+    openSheet(getEl(id));
+  } else {
+    closeSheet();
+  }
+}
+
+// ─── PROPERTIES SHEET ────────────────────────────────────────────────────────
+function openSheet(el) {
+  if (!el) return;
+  buildSheet(el);
+  document.getElementById('props-sheet').classList.add('open');
+}
+function closeSheet() {
+  document.getElementById('props-sheet').classList.remove('open');
+}
+function updateSheetPos(el) {
+  if (sel === el.id && document.getElementById('props-sheet').classList.contains('open')) {
+    buildSheet(el);
+  }
+}
+
+function buildSheet(el) {
+  document.getElementById('sheet-title').textContent = el.label + ' · ' + el.type;
+  const body = document.getElementById('sheet-body');
+  const hasText   = ['button','label','checkbox','textbox','dropdown'].includes(el.type);
+  const hasBg     = ['frame','button','textbox','dropdown'].includes(el.type);
+  const hasRadius = ['frame','button','textbox','dropdown'].includes(el.type);
+  const hasShadow = ['frame','button'].includes(el.type);
+
+  body.innerHTML = `
+  <div class="s-section">
+    <div class="s-sec-hd">Identity</div>
+    <div class="s-row"><span class="s-label">Label</span>
+      <input class="s-input" value="${el.label}" onchange="sp(${el.id},'label',this.value)"></div>
+  </div>
+
+  <div class="s-section">
+    <div class="s-sec-hd">Transform</div>
+    <div class="s-row">
+      <span class="s-label">X</span><input class="s-input" type="number" value="${Math.round(el.x)}" onchange="sp(${el.id},'x',+this.value)">
+      <span class="s-label" style="width:24px;text-align:center">Y</span><input class="s-input" type="number" value="${Math.round(el.y)}" onchange="sp(${el.id},'y',+this.value)">
+    </div>
+    <div class="s-row">
+      <span class="s-label">W</span><input class="s-input" type="number" value="${Math.round(el.w)}" onchange="sp(${el.id},'w',+this.value)">
+      <span class="s-label" style="width:24px;text-align:center">H</span><input class="s-input" type="number" value="${Math.round(el.h)}" onchange="sp(${el.id},'h',+this.value)">
+    </div>
+    <div class="s-row"><span class="s-label">Opacity</span>
+      <input class="s-range" type="range" min="0" max="1" step="0.05" value="${el.opacity}"
+        oninput="sp(${el.id},'opacity',+this.value)">
+      <span style="font-size:10px;color:var(--text2);width:32px">${Math.round(el.opacity*100)}%</span>
+    </div>
+  </div>
+
+  ${hasRadius ? `
+  <div class="s-section">
+    <div class="s-sec-hd">Corner Radius</div>
+    <div class="s-row"><span class="s-label">Radius</span>
+      <input class="s-range" type="range" min="0" max="50" value="${el.radius}"
+        oninput="sp(${el.id},'radius',+this.value);this.nextElementSibling.textContent=this.value+'px'">
+      <span style="font-size:10px;color:var(--text2);width:32px">${el.radius}px</span>
+    </div>
+  </div>` : ''}
+
+  ${hasBg ? `
+  <div class="s-section">
+    <div class="s-sec-hd">Appearance</div>
+    <div class="s-row"><span class="s-label">Background</span>
+      <input class="s-color" type="color" value="${el.bg.startsWith('t')?'#1e1e2a':el.bg}" onchange="sp(${el.id},'bg',this.value)"></div>
+    <div class="s-row"><span class="s-label">Border</span>
+      <input class="s-color" type="color" value="${el.border.startsWith('t')?'#444444':el.border}" onchange="sp(${el.id},'border',this.value)"></div>
+    ${hasShadow ? `<div class="s-row"><span class="s-label">Shadow</span>
+      <input class="s-range" type="range" min="0" max="20" value="${el.shadow}"
+        oninput="sp(${el.id},'shadow',+this.value)">
+      <span style="font-size:10px;color:var(--text2);width:28px">${el.shadow}</span>
+    </div>` : ''}
+  </div>` : ''}
+
+  <div class="s-section">
+    <div class="s-sec-hd">Neon Glow</div>
+    <div class="neon-row">
+      <div class="nb nb-none"   onclick="sp(${el.id},'neon','none')">None</div>
+      <div class="nb nb-blue"   onclick="sp(${el.id},'neon','blue')">Blue</div>
+      <div class="nb nb-purple" onclick="sp(${el.id},'neon','purple')">Purple</div>
+      <div class="nb nb-green"  onclick="sp(${el.id},'neon','green')">Green</div>
+      <div class="nb nb-pink"   onclick="sp(${el.id},'neon','pink')">Pink</div>
+    </div>
+  </div>
+
+  ${hasText ? `
+  <div class="s-section">
+    <div class="s-sec-hd">Text</div>
+    <div class="s-row"><span class="s-label">Content</span>
+      <input class="s-input" value="${el.text.replace(/"/g,'&quot;').replace(/\n/g,'\\n')}" onchange="sp(${el.id},'text',this.value.replace(/\\\\n/g,'\\n'))"></div>
+    <div class="s-row"><span class="s-label">Color</span>
+      <input class="s-color" type="color" value="${el.textColor}" onchange="sp(${el.id},'textColor',this.value)"></div>
+    <div class="s-row"><span class="s-label">🌈 Rainbow</span>
+      <input class="s-check" type="checkbox" ${el.rbw?'checked':''} onchange="sp(${el.id},'rbw',this.checked)"></div>
+  </div>` : ''}
+
+  <div class="s-section">
+    <div class="s-sec-hd">Script</div>
+    <div class="btn btn-p" style="width:100%;text-align:center;padding:10px" onclick="openScript(${el.id})">✏️ Edit Script (double-tap)</div>
+  </div>
+
+  <div class="s-section">
+    <div class="s-sec-hd">Actions</div>
+    <div style="display:flex;gap:8px">
+      <div class="btn btn-s" style="flex:1;text-align:center" onclick="duplicateSelected()">Duplicate</div>
+      <div class="btn btn-d" style="flex:1;text-align:center" onclick="confirmDelete()">Delete</div>
+    </div>
+  </div>
+  `;
+}
+
+function sp(id, key, val) {
+  saveUndo();
+  const el = getEl(id);
+  if (!el) return;
+  el[key] = val;
+  renderEl(el);
+  // refresh sheet live for radius/opacity
+  if (['radius','opacity','shadow','neon','bg','border','text','textColor','rbw'].includes(key)) {
+    buildSheet(el);
+  }
+}
+
+// ─── SCRIPT EDITOR ───────────────────────────────────────────────────────────
+function openScript(id) {
+  const el = getEl(id);
+  if (!el) return;
+  scriptTarget = id;
+  document.getElementById('sm-elname').textContent = el.label;
+  const evMap = { button:'OnClick', textbox:'OnChange', checkbox:'OnToggle', slider:'OnChange', dropdown:'OnSelect', frame:'OnLoad', label:'OnLoad' };
+  document.getElementById('sm-event').textContent = `-- Event: ${evMap[el.type]||'OnLoad'}`;
+  document.getElementById('script-editor').value = el.script;
+  document.getElementById('script-modal').classList.add('open');
+}
+function closeScript() {
+  document.getElementById('script-modal').classList.remove('open');
+  scriptTarget = null;
+}
+function saveScript() {
+  if (scriptTarget === null) { closeScript(); return; }
+  const el = getEl(scriptTarget);
+  if (el) {
+    el.script = document.getElementById('script-editor').value;
+    showToast('Script saved ✓');
+  }
+  closeScript();
+}
+function clearSc() { document.getElementById('script-editor').value = ''; }
+function injectCode(code) {
+  const ta = document.getElementById('script-editor');
+  const p = ta.selectionStart || ta.value.length;
+  ta.value = ta.value.slice(0,p) + code + ta.value.slice(p);
+}
+
+// ─── SNIPPETS ────────────────────────────────────────────────────────────────
+const snippets = {
+  notify:`game:GetService("StarterGui"):SetCore("SendNotification",{\n  Title="LSM",\n  Text="Hello!",\n  Duration=5\n})`,
+  loop:`for i=1,10 do\n  print("Step "..i)\n  wait(0.1)\nend`,
+  tween:`local ts=game:GetService("TweenService")\nlocal info=TweenInfo.new(0.5)\nts:Create(part,info,{Position=Vector3.new(0,10,0)}):Play()`,
+  remote:`game.ReplicatedStorage:WaitForChild("RemoteEvent"):FireServer("action",{})`
+};
+function openSnippet(name) {
+  if (!scriptTarget) { showToast('Double-tap an element first'); return; }
+  if (snippets[name]) {
+    const ta = document.getElementById('script-editor');
+    ta.value += '\n' + snippets[name];
+    document.getElementById('script-modal').classList.add('open');
+  }
+}
+
+// ─── LUA GENERATOR ───────────────────────────────────────────────────────────
+function generateLua() {
+  let c = `-- ================================================\n-- Generated by LSM (Lua Script Maker) Mobile\n-- Project: ${projectName}.lua\n-- Elements: ${elements.length}\n-- ================================================\n\n`;
+  c += `${globalScript}\n\n`;
+  c += `local ScreenGui=Instance.new("ScreenGui")\nScreenGui.Name="${projectName}"\nScreenGui.Parent=game.Players.LocalPlayer.PlayerGui\n\n`;
+  c += `local Main=Instance.new("Frame")\nMain.Size=UDim2.new(0,${CW},0,${CH})\nMain.Position=UDim2.new(0.5,-${CW/2},0.5,-${CH/2})\nMain.BackgroundColor3=Color3.fromRGB(24,24,31)\nMain.Parent=ScreenGui\n\n`;
+  const tmap={frame:'Frame',button:'TextButton',textbox:'TextBox',label:'TextLabel',checkbox:'Frame',slider:'Frame',dropdown:'Frame',separator:'Frame'};
+  elements.forEach(el=>{
+    const n=el.label.replace(/\s+/g,'_');
+    c+=`-- ${el.type.toUpperCase()}: ${n}\n`;
+    c+=`local ${n}=Instance.new("${tmap[el.type]||'Frame'}")\n`;
+    c+=`${n}.Name="${n}"\n${n}.Size=UDim2.new(0,${el.w},0,${el.h})\n${n}.Position=UDim2.new(0,${el.x},0,${el.y})\n`;
+    if (!el.bg.startsWith('t')) { const rgb=h2r(el.bg); if(rgb)c+=`${n}.BackgroundColor3=Color3.fromRGB(${rgb})\n`; }
+    else c+=`${n}.BackgroundTransparency=1\n`;
+    if(el.opacity<1) c+=`${n}.BackgroundTransparency=${(1-el.opacity).toFixed(2)}\n`;
+    if(['button','label','textbox'].includes(el.type)){c+=`${n}.Text="${el.text}"\n`; const tc=h2r(el.textColor); if(tc)c+=`${n}.TextColor3=Color3.fromRGB(${tc})\n`;}
+    if(el.radius>0){c+=`local UICorner${n}=Instance.new("UICorner")\nUICorner${n}.CornerRadius=UDim.new(0,${el.radius})\nUICorner${n}.Parent=${n}\n`;}
+    c+=`${n}.Parent=Main\n`;
+    if(el.script&&el.script.trim()&&!el.script.trim().startsWith('--')){
+      const ev={button:'MouseButton1Click',textbox:'FocusLost',checkbox:'MouseButton1Click',slider:'Changed',dropdown:'Changed'}[el.type]||'MouseButton1Click';
+      if(!['label','frame','separator'].includes(el.type)){c+=`\n${n}.${ev}:Connect(function()\n`;el.script.split('\n').forEach(l=>{c+=`  ${l}\n`;});c+=`end)\n`;}
+    }
+    c+='\n';
+  });
+  return c;
+}
+
+function h2r(hex) {
+  if (!hex||hex.startsWith('t')) return null;
+  return `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;
+}
+
+function saveLua() {
+  const code = generateLua();
+  const blob = new Blob([code],{type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = projectName+'.lua';
+  a.click();
+  showToast(`Saved ${projectName}.lua ✓`);
+}
+
+// ─── DELETE / DUPLICATE ───────────────────────────────────────────────────────
+function deleteSelected() {
+  if (!sel) return;
+  const dom=getDom(sel); if(dom)dom.remove();
+  elements=elements.filter(e=>e.id!==sel);
+  sel=null; closeSheet();
+  showToast('Deleted');
+}
+function confirmDelete() {
+  document.getElementById('conf-title').textContent='Delete Element';
+  document.getElementById('conf-msg').textContent='This action cannot be undone.';
+  document.getElementById('confirm-bg').classList.add('open');
+  document.getElementById('conf-ok').onclick=()=>{ deleteSelected(); document.getElementById('confirm-bg').classList.remove('open'); };
+  document.getElementById('conf-cancel').onclick=()=>document.getElementById('confirm-bg').classList.remove('open');
+}
+function duplicateSelected() {
+  if (!sel) return;
+  saveUndo();
+  const el=getEl(sel);
+  const ne=JSON.parse(JSON.stringify(el));
+  ne.id=idCnt++; ne.x+=14; ne.y+=14; ne.label=el.label+'_copy';
+  elements.push(ne); renderEl(ne); selectEl(ne.id);
+  showToast('Duplicated ✓');
+}
+
+// ─── ALIGN ───────────────────────────────────────────────────────────────────
+function alignEl(dir) {
+  if (!sel) return;
+  saveUndo();
+  const el=getEl(sel);
+  if (dir==='left')   el.x=0;
+  if (dir==='right')  el.x=CW-el.w;
+  if (dir==='center') el.x=Math.round((CW-el.w)/2);
+  if (dir==='top')    el.y=0;
+  if (dir==='bottom') el.y=CH-el.h;
+  if (dir==='middle') el.y=Math.round((CH-el.h)/2);
+  renderEl(el); buildSheet(el);
+}
+function bringFront() { if(!sel)return; const el=getEl(sel); el.z=Math.max(...elements.map(e=>e.z))+1; getDom(sel).style.zIndex=el.z; }
+function sendBack()   { if(!sel)return; const el=getEl(sel); el.z=Math.min(...elements.map(e=>e.z))-1; getDom(sel).style.zIndex=el.z; }
+
+// ─── UNDO/REDO ────────────────────────────────────────────────────────────────
+function saveUndo() {
+  undoStack.push(JSON.stringify(elements));
+  if (undoStack.length>25) undoStack.shift();
+  redoStack=[];
+}
+function undoAction() {
+  if (!undoStack.length){showToast('Nothing to undo');return;}
+  redoStack.push(JSON.stringify(elements));
+  restoreState(JSON.parse(undoStack.pop()));
+  showToast('Undo ↩');
+}
+function redoAction() {
+  if (!redoStack.length){showToast('Nothing to redo');return;}
+  undoStack.push(JSON.stringify(elements));
+  restoreState(JSON.parse(redoStack.pop()));
+  showToast('Redo ↪');
+}
+function restoreState(state) {
+  canvas.innerHTML='';
+  elements=state;
+  idCnt=Math.max(...elements.map(e=>e.id),0)+1;
+  elements.forEach(renderEl);
+  sel=null; closeSheet();
+}
+
+// ─── DRAWER ───────────────────────────────────────────────────────────────────
+function toggleDrawer() {
+  document.getElementById('drawer').classList.toggle('open');
+  document.getElementById('drawer-overlay').classList.toggle('open');
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+initCanvas();
+showToast('Welcome to LSM Mobile 🚀');
+</script>
+</body>
+</html>

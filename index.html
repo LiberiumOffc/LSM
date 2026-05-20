@@ -26,16 +26,16 @@
 }
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:'JetBrains Mono',monospace; }
+html, body { height:100%; overflow:hidden; background:transparent; color:var(--text); font-family:'JetBrains Mono',monospace; }
 
 /* ── LAYOUT ── */
-#app { display:flex; flex-direction:column; height:100dvh; overflow:hidden; }
+#app { display:flex; flex-direction:column; height:100dvh; overflow:hidden; background:transparent; }
 
 /* ── TOP BAR ── */
 #topbar {
   height:48px; flex-shrink:0;
-  background:var(--bg2);
-  border-bottom:1px solid var(--border);
+  background:transparent;
+  border-bottom:none;
   display:flex; align-items:center; gap:8px;
   padding:0 12px;
   position:relative; z-index:100;
@@ -48,12 +48,13 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 #topbar-right { margin-left:auto; display:flex; gap:6px; }
 .top-btn {
   width:36px; height:36px; border-radius:8px;
-  border:1px solid var(--border); background:var(--bg3);
-  color:var(--text2); font-size:16px;
+  border:1px solid rgba(255,255,255,.15); background:rgba(0,0,0,.35);
+  color:var(--text); font-size:16px;
   display:flex; align-items:center; justify-content:center;
   cursor:pointer; transition:all .15s;
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
 }
-.top-btn:active { background:var(--bg4); color:var(--accent); transform:scale(.93); }
+.top-btn:active { background:rgba(0,0,0,.5); color:var(--accent); transform:scale(.93); }
 .top-btn.accent { background:var(--accent); color:#000; border-color:var(--accent); }
 .top-btn.accent:active { filter:brightness(1.2); }
 
@@ -63,8 +64,9 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 /* ── LEFT DRAWER ── */
 #drawer {
   position:fixed; left:0; top:48px; bottom:0;
-  width:220px; background:var(--panel);
-  border-right:1px solid var(--border);
+  width:220px; background:rgba(0,0,0,.55);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border-right:1px solid rgba(255,255,255,.08);
   z-index:90; transform:translateX(-100%);
   transition:transform .25s cubic-bezier(.4,0,.2,1);
   display:flex; flex-direction:column;
@@ -82,10 +84,10 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
   padding:10px 12px 6px;
   font-family:'Rajdhani',sans-serif; font-weight:700;
   font-size:10px; color:var(--accent); letter-spacing:3px;
-  text-transform:uppercase; border-bottom:1px solid var(--border);
-  background:var(--bg2);
+  text-transform:uppercase; 
+  background:transparent;
 }
-.drawer-scroll { flex:1; overflow-y:auto; padding:6px 8px; }
+.drawer-scroll { flex:1; overflow-y:auto; padding:6px 8px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 .cat-label {
   font-size:9px; color:var(--accent2); text-transform:uppercase;
   letter-spacing:2px; padding:8px 4px 3px;
@@ -98,7 +100,7 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
   cursor:pointer; font-size:12px; color:var(--text2);
   transition:all .12s; user-select:none;
 }
-.part-item:active { background:var(--bg4); color:var(--accent); border-color:var(--border); transform:scale(.97); }
+.part-item:active { background:rgba(255,255,255,.1); color:var(--accent); border-color:var(--border); transform:scale(.97); }
 .part-icon { font-size:16px; }
 .part-name { font-family:'Rajdhani',sans-serif; font-weight:600; letter-spacing:.5px; }
 
@@ -107,20 +109,16 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 
 #canvas-area {
   flex:1; position:relative; overflow:auto;
-  background:
-    linear-gradient(rgba(0,212,255,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,212,255,.025) 1px, transparent 1px);
-  background-size:18px 18px;
-  background-color:var(--bg);
-  touch-action:none;
+  background:transparent;
+  touch-action:pan-x pan-y;
 }
 
 #canvas {
   position:absolute;
   top:50%; left:50%;
   transform:translate(-50%,-50%);
-  background:#18181f;
-  box-shadow:0 0 0 1px var(--border), 0 8px 60px rgba(0,0,0,.7);
+  background:transparent;
+  box-shadow:none;
   /* size set by JS */
 }
 
@@ -132,21 +130,34 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 }
 .el.sel::after {
   content:'';
-  position:absolute; inset:-2px;
+  position:absolute; inset:-3px;
   border:2px solid var(--accent);
   border-radius:inherit;
   pointer-events:none; z-index:20;
 }
-.el-resize {
-  position:absolute; right:-1px; bottom:-1px;
-  width:20px; height:20px;
-  background:var(--accent); border:2px solid #000;
-  border-radius:4px 0 4px 0;
-  display:none; align-items:center; justify-content:center;
-  font-size:9px; color:#000; z-index:21; cursor:se-resize;
+/* resize handles — shown only when selected */
+.el-rh {
+  position:absolute;
+  background:var(--accent);
+  border:2px solid #000;
+  border-radius:3px;
+  display:none;
+  z-index:22;
   touch-action:none;
 }
-.el.sel .el-resize { display:flex; }
+.el.sel .el-rh { display:block; }
+/* corner SE — main resize */
+.el-rh.se { width:18px; height:18px; right:-3px; bottom:-3px; cursor:se-resize; border-radius:4px 0 4px 0; }
+/* corner NE */
+.el-rh.ne { width:14px; height:14px; right:-3px; top:-3px; cursor:ne-resize; border-radius:0 4px 0 4px; }
+/* corner SW */
+.el-rh.sw { width:14px; height:14px; left:-3px; bottom:-3px; cursor:sw-resize; border-radius:4px 0 4px 0; }
+/* corner NW */
+.el-rh.nw { width:14px; height:14px; left:-3px; top:-3px; cursor:nw-resize; border-radius:4px 0 4px 0; }
+/* edge right */
+.el-rh.er { width:10px; height:30px; right:-4px; top:50%; transform:translateY(-50%); cursor:e-resize; border-radius:3px; }
+/* edge bottom */
+.el-rh.eb { height:10px; width:30px; bottom:-4px; left:50%; transform:translateX(-50%); cursor:s-resize; border-radius:3px; }
 
 /* type styles */
 .t-frame    { background:rgba(28,28,38,.92); border:1px solid rgba(255,255,255,.1); }
@@ -171,7 +182,9 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 /* ── PROPS SHEET ── */
 #props-sheet {
   position:fixed; left:0; right:0; bottom:0;
-  background:var(--bg2); border-top:1px solid var(--border);
+  background:rgba(0,0,0,.6);
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  border-top:1px solid rgba(255,255,255,.08);
   z-index:80; border-radius:16px 16px 0 0;
   transform:translateY(100%);
   transition:transform .28s cubic-bezier(.4,0,.2,1);
@@ -197,13 +210,13 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 .s-sec-hd {
   font-size:9px; color:var(--accent2); text-transform:uppercase;
   letter-spacing:2px; padding-bottom:6px;
-  border-bottom:1px solid var(--border); margin-bottom:8px;
+   margin-bottom:8px;
   font-family:'Rajdhani',sans-serif; font-weight:700;
 }
 .s-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
 .s-label { font-size:11px; color:var(--text2); width:72px; flex-shrink:0; }
 .s-input {
-  flex:1; background:var(--bg3); border:1px solid var(--border);
+  flex:1; background:rgba(255,255,255,.06); border:1px solid var(--border);
   color:var(--text); font-family:'JetBrains Mono',monospace;
   font-size:11px; padding:6px 8px; border-radius:6px; outline:none;
 }
@@ -211,7 +224,7 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 .s-color { width:36px; height:30px; border:1px solid var(--border); background:none; border-radius:6px; cursor:pointer; padding:0 3px; }
 .s-range { flex:1; accent-color:var(--accent); }
 .s-check { accent-color:var(--accent); width:18px; height:18px; }
-.s-select { flex:1; background:var(--bg3); border:1px solid var(--border); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:11px; padding:6px 6px; border-radius:6px; outline:none; }
+.s-select { flex:1; background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:11px; padding:6px 6px; border-radius:6px; outline:none; }
 .neon-row { display:flex; gap:6px; flex-wrap:wrap; }
 .nb {
   padding:5px 10px; font-size:10px; border:1px solid;
@@ -228,21 +241,34 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 
 /* ── SCRIPT MODAL ── */
 .modal-bg {
-  position:fixed; inset:0; background:rgba(0,0,0,.75);
+  position:fixed; inset:0;
+  background:transparent;
   z-index:200; display:none; align-items:flex-end;
+  pointer-events:none;
 }
-.modal-bg.open { display:flex; }
+.modal-bg.open { display:flex; pointer-events:auto; }
+/* dark overlay only behind the card */
+.modal-bg.open::before {
+  content:'';
+  position:absolute; inset:0;
+  background:rgba(0,0,0,.65);
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+}
 .modal-card {
-  width:100%; background:var(--bg2);
-  border-radius:16px 16px 0 0;
-  border-top:1px solid var(--border);
+  position:relative; z-index:1;
+  width:100%; background:rgba(0,0,0,.65);
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  border-radius:18px 18px 0 0;
+  border-top:1px solid rgba(255,255,255,.08);
   padding:0 0 env(safe-area-inset-bottom);
   max-height:90vh; display:flex; flex-direction:column;
+  box-shadow:0 -8px 40px rgba(0,0,0,.4);
 }
 .modal-drag-bar { width:36px; height:4px; background:var(--border); border-radius:2px; margin:10px auto 0; }
 .modal-hd {
   display:flex; align-items:center; justify-content:space-between;
-  padding:10px 16px 8px; border-bottom:1px solid var(--border);
+  padding:10px 16px 8px; 
 }
 .modal-hd-title { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:14px; color:var(--accent); letter-spacing:1px; }
 .modal-hd-close { color:var(--text2); font-size:22px; line-height:1; cursor:pointer; padding:4px; }
@@ -258,15 +284,15 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 .snippet-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
 .snip-btn {
   padding:5px 10px; font-size:10px;
-  background:var(--bg3); border:1px solid var(--border);
+  background:rgba(255,255,255,.06); border:1px solid var(--border);
   color:var(--text2); border-radius:6px; cursor:pointer;
   font-family:'JetBrains Mono',monospace;
   transition:all .1s;
 }
-.snip-btn:active { background:var(--bg4); color:var(--accent); }
+.snip-btn:active { background:rgba(255,255,255,.1); color:var(--accent); }
 .modal-footer {
   display:flex; gap:8px; padding:10px 14px;
-  border-top:1px solid var(--border); flex-shrink:0;
+   flex-shrink:0;
 }
 .btn {
   padding:10px 16px; font-size:12px; font-family:'JetBrains Mono',monospace;
@@ -281,7 +307,7 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 /* ── BOTTOM NAV ── */
 #bottom-nav {
   height:54px; flex-shrink:0;
-  background:var(--bg2); border-top:1px solid var(--border);
+  background:transparent; 
   display:flex; align-items:center;
   padding:0 8px; gap:4px;
   overflow-x:auto; -webkit-overflow-scrolling:touch;
@@ -289,18 +315,118 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 #bottom-nav::-webkit-scrollbar { display:none; }
 .nav-btn {
   flex-shrink:0; min-width:48px; height:40px;
-  border-radius:8px; border:1px solid var(--border);
-  background:var(--bg3); color:var(--text2);
+  border-radius:8px; border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.35); color:var(--text);
   font-size:11px; display:flex; flex-direction:column;
   align-items:center; justify-content:center; gap:1px;
   cursor:pointer; padding:0 8px; transition:all .12s;
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
 }
-.nav-btn:active { background:var(--bg4); color:var(--accent); transform:scale(.93); border-color:var(--accent); }
+.nav-btn:active { background:rgba(0,0,0,.55); color:var(--accent); transform:scale(.93); border-color:var(--accent); }
 .nav-btn .nb-icon { font-size:16px; line-height:1; }
 .nav-btn .nb-label { font-size:8px; letter-spacing:.5px; font-family:'Rajdhani',sans-serif; font-weight:600; }
 .nav-sep { width:1px; height:28px; background:var(--border); flex-shrink:0; margin:0 2px; }
 
-/* ── TOAST ── */
+/* ── PANEL element (collapsible section) ── */
+.t-panel {
+  background:rgba(20,20,32,.95);
+  border:1px solid rgba(0,212,255,.25);
+  border-radius:8px;
+  overflow:hidden;
+  display:flex; flex-direction:column;
+}
+.panel-titlebar {
+  height:28px; flex-shrink:0;
+  background:rgba(0,212,255,.08);
+  border-bottom:1px solid rgba(0,212,255,.18);
+  display:flex; align-items:center;
+  padding:0 8px; gap:6px;
+  cursor:move; user-select:none;
+}
+.panel-title-text {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--accent); flex:1;
+  pointer-events:none;
+}
+.panel-toggle-dot {
+  width:14px; height:14px; border-radius:50%;
+  background:var(--accent); opacity:.7;
+  display:flex; align-items:center; justify-content:center;
+  font-size:8px; color:#000; cursor:pointer;
+  flex-shrink:0;
+}
+.panel-body {
+  flex:1; position:relative; overflow:hidden;
+  transition:max-height .25s ease;
+}
+.panel-body.collapsed { max-height:0 !important; }
+
+/* ── FLOATING collapse/expand button ── */
+#fab {
+  position:fixed;
+  right:16px; bottom:72px;
+  width:52px; height:52px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  box-shadow:0 4px 20px rgba(0,212,255,.35), 0 2px 8px rgba(0,0,0,.5);
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; cursor:pointer; z-index:150;
+  border:none; color:#fff;
+  transition:transform .18s, box-shadow .18s;
+  -webkit-tap-highlight-color:transparent;
+}
+#fab:active { transform:scale(.88); box-shadow:0 2px 10px rgba(0,212,255,.2); }
+#fab-label {
+  position:fixed; right:76px; bottom:88px;
+  background:rgba(0,0,0,.8); color:var(--accent);
+  font-size:10px; padding:4px 10px; border-radius:20px;
+  border:1px solid var(--border);
+  font-family:'Rajdhani',sans-serif; font-weight:600;
+  letter-spacing:1px; white-space:nowrap;
+  z-index:149; opacity:0; pointer-events:none;
+  transition:opacity .2s;
+}
+#fab:active + #fab-label,
+#fab.show-label + #fab-label { opacity:1; }
+
+/* ── DRAG GHOST ── */
+#drag-ghost {
+  position:fixed; z-index:500; pointer-events:none;
+  background:rgba(255,255,255,.06); border:1.5px solid var(--accent);
+  border-radius:8px; padding:8px 16px;
+  font-family:'Rajdhani',sans-serif; font-weight:700;
+  font-size:13px; color:var(--accent); letter-spacing:1px;
+  box-shadow:0 4px 24px rgba(0,212,255,.35);
+  display:none; align-items:center; gap:8px;
+  white-space:nowrap; transform:translate(-50%,-50%);
+}
+#drag-ghost.active { display:flex; }
+
+/* ── SNIPPET EDITOR MODAL ── */
+.snip-field { margin-bottom:12px; }
+.snip-field label { display:block; font-size:10px; color:var(--text2); margin-bottom:4px; letter-spacing:1px; text-transform:uppercase; font-family:'Rajdhani',sans-serif; }
+.snip-finput {
+  width:100%; background:rgba(255,255,255,.06); border:1px solid var(--border);
+  color:var(--text); font-family:'JetBrains Mono',monospace;
+  font-size:12px; padding:8px 10px; border-radius:6px; outline:none;
+  transition: border-color .15s;
+}
+.snip-finput:focus { border-color:var(--accent); }
+.snip-ftextarea {
+  width:100%; background:rgba(255,255,255,.06); border:1px solid var(--border);
+  color:var(--text); font-family:'JetBrains Mono',monospace;
+  font-size:11px; padding:8px 10px; border-radius:6px; outline:none;
+  resize:none; height:80px; line-height:1.6;
+  transition: border-color .15s;
+}
+.snip-ftextarea:focus { border-color:var(--accent); }
+.snip-preview-box {
+  background:#08080f; border:1px solid var(--border);
+  border-radius:6px; padding:10px 12px;
+  font-family:'JetBrains Mono',monospace; font-size:10px;
+  color:#a8e6cf; line-height:1.7; white-space:pre-wrap;
+  max-height:100px; overflow-y:auto; margin-top:4px;
+}
 #toast {
   position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
   background:#000; border:1px solid var(--border);
@@ -312,13 +438,13 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width:4px; height:4px; }
-::-webkit-scrollbar-track { background:var(--bg2); }
+::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
 
 /* ── CONFIRM DIALOG ── */
 #confirm-bg { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:250; display:none; align-items:center; justify-content:center; }
 #confirm-bg.open { display:flex; }
-.confirm-card { background:var(--bg3); border:1px solid var(--border); border-radius:14px; padding:22px 20px; width:280px; text-align:center; }
+.confirm-card { background:rgba(255,255,255,.06); border:1px solid var(--border); border-radius:14px; padding:22px 20px; width:280px; text-align:center; }
 .confirm-title { font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:700; color:var(--text); margin-bottom:8px; }
 .confirm-msg { font-size:11px; color:var(--text2); margin-bottom:18px; line-height:1.6; }
 .confirm-btns { display:flex; gap:10px; }
@@ -346,24 +472,25 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
     <div class="drawer-head">🧩 COMPONENTS</div>
     <div class="drawer-scroll">
       <div class="cat-label">Layout</div>
-      <div class="part-item" onclick="addEl('frame');closeDrawer()"><span class="part-icon">⬛</span><span class="part-name">Frame</span></div>
-      <div class="part-item" onclick="addEl('separator');closeDrawer()"><span class="part-icon">─</span><span class="part-name">Separator</span></div>
+      <div class="part-item" ontouchstart="startDragFromDrawer(event,'frame','⬛ Frame')" onclick="addEl('frame');closeDrawer()"><span class="part-icon">⬛</span><span class="part-name">Frame</span></div>
+      <div class="part-item" ontouchstart="startDragFromDrawer(event,'panel','🗂️ Panel')" onclick="addEl('panel');closeDrawer()"><span class="part-icon">🗂️</span><span class="part-name">Panel</span></div>
+      <div class="part-item" ontouchstart="startDragFromDrawer(event,'separator','─ Separator')" onclick="addEl('separator');closeDrawer()"><span class="part-icon">─</span><span class="part-name">Separator</span></div>
 
       <div class="cat-label">Controls</div>
-      <div class="part-item" onclick="addEl('button');closeDrawer()"><span class="part-icon">🔲</span><span class="part-name">Button</span></div>
-      <div class="part-item" onclick="addEl('checkbox');closeDrawer()"><span class="part-icon">☑️</span><span class="part-name">CheckBox</span></div>
-      <div class="part-item" onclick="addEl('slider');closeDrawer()"><span class="part-icon">🎚️</span><span class="part-name">Slider</span></div>
-      <div class="part-item" onclick="addEl('dropdown');closeDrawer()"><span class="part-icon">🔽</span><span class="part-name">DropDown</span></div>
+      <div class="part-item" ontouchstart="startDragFromDrawer(event,'button','🔲 Button')" onclick="addEl('button');closeDrawer()"><span class="part-icon">🔲</span><span class="part-name">Button</span></div>
+      <div class="part-item" ontouchstart="startDragFromDrawer(event,'checkbox','☑️ CheckBox')" onclick="addEl('checkbox');closeDrawer()"><span class="part-icon">☑️</span><span class="part-name">CheckBox</span></div>
+      <div class="part-item" ontouchstart="startDragFromDrawer(event,'slider','🎚️ Slider')" onclick="addEl('slider');closeDrawer()"><span class="part-icon">🎚️</span><span class="part-name">Slider</span></div>
+      <div class="part-item" ontouchstart="startDragFromDrawer(event,'dropdown','🔽 DropDown')" onclick="addEl('dropdown');closeDrawer()"><span class="part-icon">🔽</span><span class="part-name">DropDown</span></div>
 
       <div class="cat-label">Display</div>
-      <div class="part-item" onclick="addEl('label');closeDrawer()"><span class="part-icon">🏷️</span><span class="part-name">Label</span></div>
-      <div class="part-item" onclick="addEl('textbox');closeDrawer()"><span class="part-icon">✏️</span><span class="part-name">TextBox</span></div>
+      <div class="part-item" ontouchstart="startDragFromDrawer(event,'label','🏷️ Label')" onclick="addEl('label');closeDrawer()"><span class="part-icon">🏷️</span><span class="part-name">Label</span></div>
+      <div class="part-item" ontouchstart="startDragFromDrawer(event,'textbox','✏️ TextBox')" onclick="addEl('textbox');closeDrawer()"><span class="part-icon">✏️</span><span class="part-name">TextBox</span></div>
 
       <div class="cat-label">Snippets</div>
-      <div class="part-item" onclick="openSnippet('notify');closeDrawer()"><span class="part-icon">🔔</span><span class="part-name">Notify</span></div>
-      <div class="part-item" onclick="openSnippet('loop');closeDrawer()"><span class="part-icon">🔁</span><span class="part-name">Loop</span></div>
-      <div class="part-item" onclick="openSnippet('tween');closeDrawer()"><span class="part-icon">🎞️</span><span class="part-name">Tween</span></div>
-      <div class="part-item" onclick="openSnippet('remote');closeDrawer()"><span class="part-icon">📡</span><span class="part-name">RemoteEvent</span></div>
+      <div class="part-item" onclick="openSnipEditor('notify');closeDrawer()"><span class="part-icon">🔔</span><span class="part-name">Notify</span></div>
+      <div class="part-item" onclick="openSnipEditor('loop');closeDrawer()"><span class="part-icon">🔁</span><span class="part-name">Loop</span></div>
+      <div class="part-item" onclick="openSnipEditor('tween');closeDrawer()"><span class="part-icon">🎞️</span><span class="part-name">Tween</span></div>
+      <div class="part-item" onclick="openSnipEditor('remote');closeDrawer()"><span class="part-icon">📡</span><span class="part-name">RemoteEvent</span></div>
     </div>
   </div>
 
@@ -393,7 +520,7 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
     <div class="nav-btn" onclick="bringFront()"><span class="nb-icon">▲</span><span class="nb-label">FRONT</span></div>
     <div class="nav-btn" onclick="sendBack()"><span class="nb-icon">▼</span><span class="nb-label">BACK</span></div>
     <div class="nav-sep"></div>
-    <div class="nav-btn" onclick="generateLua();showToast('Lua generated!')"><span class="nb-icon">⚡</span><span class="nb-label">GEN</span></div>
+    <div class="nav-btn" onclick="openCodeViewer()" style="color:var(--green);border-color:var(--green)"><span class="nb-icon">⚡</span><span class="nb-label">CODE</span></div>
     <div class="nav-btn" onclick="saveLua()" style="color:var(--accent);border-color:var(--accent)"><span class="nb-icon">💾</span><span class="nb-label">SAVE</span></div>
   </div>
 </div>
@@ -410,28 +537,54 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
 
 <!-- SCRIPT MODAL -->
 <div class="modal-bg" id="script-modal">
-  <div class="modal-card">
+  <div class="modal-card" style="max-height:95vh">
     <div class="modal-drag-bar"></div>
     <div class="modal-hd">
-      <div class="modal-hd-title">✏️ Script — <span id="sm-elname"></span></div>
-      <div class="modal-hd-close" onclick="closeScript()">×</div>
+      <div class="modal-hd-title">✏️ <span id="sm-elname"></span></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+        <div id="syntax-toggle" onclick="toggleSyntax()" style="
+          font-size:9px;padding:3px 8px;border-radius:12px;cursor:pointer;
+          border:1px solid var(--accent);color:var(--accent);
+          font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;
+          transition:all .15s;user-select:none;
+        ">SYNTAX ON</div>
+        <div class="modal-hd-close" onclick="closeScript()">×</div>
+      </div>
     </div>
-    <div class="modal-body">
-      <div id="sm-event" style="font-size:10px;color:var(--text2);margin-bottom:6px;"></div>
-      <textarea id="script-editor" spellcheck="false"></textarea>
-      <div class="snippet-row">
+    <div id="sm-event" style="font-size:10px;color:var(--text2);padding:4px 16px 0;flex-shrink:0;"></div>
+    <div class="modal-body" style="padding:8px 12px;position:relative;">
+      <!-- syntax highlighted display layer -->
+      <div id="syntax-display" style="
+        position:absolute;inset:8px 12px;
+        background:#08080f;border:1px solid var(--border);border-radius:8px;
+        padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;
+        line-height:1.7;white-space:pre-wrap;word-wrap:break-word;
+        overflow:auto;pointer-events:none;z-index:1;
+        color:transparent;
+      "></div>
+      <!-- actual textarea on top -->
+      <textarea id="script-editor" spellcheck="false" oninput="onScriptInput()" style="
+        position:relative;z-index:2;
+        width:100%;height:210px;
+        background:transparent;border:1px solid var(--border);border-radius:8px;
+        color:#e2e2e8;font-family:'JetBrains Mono',monospace;
+        font-size:12px;line-height:1.7;padding:10px;
+        outline:none;resize:none;caret-color:#00d4ff;
+      "></textarea>
+      <div class="snippet-row" style="margin-top:8px">
         <div class="snip-btn" onclick="injectCode('print(\"Hello\")')">print()</div>
-        <div class="snip-btn" onclick="injectCode('wait(0.1)')">wait()</div>
+        <div class="snip-btn" onclick="injectCode('task.wait(0.1)')">wait()</div>
         <div class="snip-btn" onclick="injectCode('game.Players.LocalPlayer')">LocalPlayer</div>
-        <div class="snip-btn" onclick="injectCode('Instance.new(\"Part\")')">Instance.new</div>
-        <div class="snip-btn" onclick="injectCode('game.Workspace')">Workspace</div>
+        <div class="snip-btn" onclick="injectCode('game:GetService(\"RunService\")')">RunService</div>
+        <div class="snip-btn" onclick="injectCode('workspace')">workspace</div>
+        <div class="snip-btn" onclick="injectCode('script.Parent')">script.Parent</div>
       </div>
     </div>
     <div class="modal-footer">
       <div class="btn btn-d" onclick="clearSc()">Clear</div>
       <div style="flex:1"></div>
       <div class="btn btn-s" onclick="closeScript()">Cancel</div>
-      <div class="btn btn-p" onclick="saveScript()">Save</div>
+      <div class="btn btn-p" onclick="saveScript()">Save ✓</div>
     </div>
   </div>
 </div>
@@ -444,6 +597,68 @@ html, body { height:100%; overflow:hidden; background:var(--bg); color:var(--tex
     <div class="confirm-btns">
       <div class="btn btn-s" style="flex:1" id="conf-cancel">Cancel</div>
       <div class="btn btn-d" style="flex:1" id="conf-ok">Delete</div>
+    </div>
+  </div>
+</div>
+
+<!-- CODE VIEWER MODAL -->
+<div class="modal-bg" id="code-modal">
+  <div class="modal-card" style="max-height:92vh">
+    <div class="modal-drag-bar"></div>
+    <div class="modal-hd">
+      <div class="modal-hd-title">⚡ Generated Lua — <span id="cv-filename" style="color:var(--green)">untitled.lua</span></div>
+      <div class="modal-hd-close" onclick="closeCodeViewer()">×</div>
+    </div>
+    <div style="padding:0 14px 8px;display:flex;gap:8px;flex-shrink:0">
+      <div id="cv-stats" style="font-size:10px;color:var(--text2);flex:1;align-self:center;line-height:1.6"></div>
+    </div>
+    <div class="modal-body" style="padding:10px 14px">
+      <div style="position:relative">
+        <pre id="code-display" style="
+          background:#08080f;
+          border:1px solid var(--border);
+          border-radius:8px;
+          padding:12px;
+          font-family:'JetBrains Mono',monospace;
+          font-size:11px;
+          line-height:1.7;
+          color:#a8e6cf;
+          overflow-x:auto;
+          white-space:pre;
+          max-height:45vh;
+          overflow-y:auto;
+          -webkit-overflow-scrolling:touch;
+        "></pre>
+      </div>
+    </div>
+    <div class="modal-footer" style="gap:8px;flex-wrap:wrap">
+      <div class="btn btn-s" onclick="closeCodeViewer()" style="flex:none">✕ Close</div>
+      <div class="btn" onclick="copyCode()" id="copy-btn" style="flex:1;text-align:center;background:var(--accent2);color:#fff;border-color:var(--accent2)">📋 Copy Script</div>
+      <div class="btn btn-p" onclick="saveLua();closeCodeViewer()" style="flex:1;text-align:center">⬇ Download .lua</div>
+    </div>
+  </div>
+</div>
+
+<!-- FLOATING ACTION BUTTON -->
+<div id="fab" onclick="fabAction()" title="Collapse/Expand selected Panel">🗂️</div>
+<div id="fab-label">COLLAPSE PANEL</div>
+
+<!-- DRAG GHOST -->
+<div id="drag-ghost"></div>
+
+<!-- SNIPPET EDITOR MODAL -->
+<div class="modal-bg" id="snip-modal">
+  <div class="modal-card">
+    <div class="modal-drag-bar"></div>
+    <div class="modal-hd">
+      <div class="modal-hd-title" id="snip-modal-title">🔔 Notify</div>
+      <div class="modal-hd-close" onclick="closeSnipModal()">×</div>
+    </div>
+    <div class="modal-body" id="snip-modal-body"></div>
+    <div class="modal-footer">
+      <div class="btn btn-s" onclick="closeSnipModal()">Cancel</div>
+      <div class="btn" onclick="copySnip()" style="background:var(--accent2);color:#fff;border-color:var(--accent2)">📋 Copy</div>
+      <div class="btn btn-p" onclick="insertSnip()">Insert →</div>
     </div>
   </div>
 </div>
@@ -474,9 +689,6 @@ function initCanvas() {
   CH = Math.round(CW * 1.3);
   canvas.style.width  = CW+'px';
   canvas.style.height = CH+'px';
-
-  // default Frame
-  addEl('frame', Math.round(CW/2 - 140), Math.round(CH/2 - 90), 'MainFrame', false);
 }
 
 // ─── ADD ELEMENT ──────────────────────────────────────────────────────────────
@@ -492,6 +704,7 @@ function addEl(type, x, y, label, doUndo=true) {
     slider:   { w:150, h:24,  bg:'transparent', border:'transparent', opacity:1, radius:0, shadow:0, neon:'none', text:'Slider',     textColor:'#e2e2e8', rbw:false },
     dropdown: { w:140, h:30,  bg:'#1c1c2a', border:'#3a3a50', opacity:1, radius:5, shadow:0, neon:'none', text:'Option 1\nOption 2\nOption 3', textColor:'#e2e2e8', rbw:false },
     separator:{ w:180, h:2,   bg:'#444',    border:'#444',    opacity:1, radius:0, shadow:0, neon:'none', text:'', textColor:'#888', rbw:false },
+    panel:    { w:200, h:160, bg:'#14141e', border:'#00d4ff', opacity:1, radius:8, shadow:4, neon:'none', text:'Panel', textColor:'#00d4ff', rbw:false, collapsed:false },
   };
   const d = defs[type] || defs.frame;
   const lbl = label || (type.charAt(0).toUpperCase()+type.slice(1)+'_'+id);
@@ -500,12 +713,14 @@ function addEl(type, x, y, label, doUndo=true) {
   const el = { id, type, x:ex, y:ey, z:id, label:lbl, script:`-- ${lbl} script\n`, ...d };
   elements.push(el);
   renderEl(el);
-  selectEl(id);
+  selectEl(id, true);
   showToast(`+ ${lbl}`);
 }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function renderEl(el) {
+  const neonMap = { blue:'neon-blue', purple:'neon-purple', green:'neon-green', pink:'neon-pink' };
+
   let dom = getDom(el.id);
   if (!dom) {
     dom = document.createElement('div');
@@ -514,21 +729,24 @@ function renderEl(el) {
     canvas.appendChild(dom);
     attachTouch(dom, el.id);
 
-    // double tap = open script
-    let lastTap = 0;
-    dom.addEventListener('touchstart', e=>{
-      const now = Date.now();
-      if (now - lastTap < 350) { openScript(el.id); e.preventDefault(); }
-      lastTap = now;
-    }, {passive:false});
-
-    const rh = document.createElement('div');
-    rh.className = 'el-resize';
-    rh.innerHTML = '↘';
-    attachResizeTouch(rh, el.id);
-    dom.appendChild(rh);
+    // 6 resize handles: SE, NE, SW, NW, right-edge, bottom-edge
+    // dx/dy: direction of size change; anchorX/anchorY: whether position shifts
+    [
+      {cls:'se', dx:1,  dy:1,  ax:0, ay:0},
+      {cls:'ne', dx:1,  dy:-1, ax:0, ay:1},
+      {cls:'sw', dx:-1, dy:1,  ax:1, ay:0},
+      {cls:'nw', dx:-1, dy:-1, ax:1, ay:1},
+      {cls:'er', dx:1,  dy:0,  ax:0, ay:0},
+      {cls:'eb', dx:0,  dy:1,  ax:0, ay:0},
+    ].forEach(cfg => {
+      const h = document.createElement('div');
+      h.className = 'el-rh ' + cfg.cls;
+      attachResizeTouch(h, el.id, cfg.dx, cfg.dy, cfg.ax, cfg.ay);
+      dom.appendChild(h);
+    });
   }
 
+  // position & size
   dom.style.cssText = `
     left:${el.x}px; top:${el.y}px;
     width:${el.w}px; height:${el.h}px;
@@ -538,31 +756,27 @@ function renderEl(el) {
     box-sizing:border-box;
   `;
 
+  // save handles before wiping innerHTML
+  const handles = [...dom.querySelectorAll('.el-rh')];
+  dom.innerHTML = '';
+  handles.forEach(h => dom.appendChild(h));
+
+  // type class + style
+  dom.className = `el t-${el.type}`;
+  handles.forEach(h => dom.appendChild(h)); // re-append (className wipe doesn't remove children but just in case)
+  dom.style.borderRadius = el.radius + 'px';
+
   // neon
-  const neonMap = { blue:'neon-blue', purple:'neon-purple', green:'neon-green', pink:'neon-pink' };
   ['neon-blue','neon-purple','neon-green','neon-pink'].forEach(c=>dom.classList.remove(c));
   if (el.neon !== 'none' && neonMap[el.neon]) dom.classList.add(neonMap[el.neon]);
 
-  // shadow (if no neon)
-  if (el.shadow && el.neon === 'none') {
-    dom.style.boxShadow = `0 ${el.shadow}px ${el.shadow*3}px rgba(0,0,0,.6)`;
-  }
-
-  // remove inner content (rebuild)
-  const rh = dom.querySelector('.el-resize');
-  dom.innerHTML = '';
-  dom.appendChild(rh);
-
-  // type-specific style & inner
-  dom.className = `el t-${el.type}`;
-  dom.appendChild(rh);
-  dom.style.borderRadius = el.radius+'px';
-  if (el.neon !== 'none' && neonMap[el.neon]) dom.classList.add(neonMap[el.neon]);
+  // rebuild inner content BEFORE handles
+  const firstHandle = dom.querySelector('.el-rh');
 
   if (el.type === 'frame') {
-    dom.style.background   = el.bg.startsWith('t') ? 'transparent' : el.bg;
-    dom.style.borderColor  = el.border.startsWith('t') ? 'transparent' : el.border;
-    dom.style.borderStyle  = 'solid'; dom.style.borderWidth = '1px';
+    dom.style.background  = el.bg.startsWith('t') ? 'transparent' : el.bg;
+    dom.style.borderColor = el.border.startsWith('t') ? 'transparent' : el.border;
+    dom.style.borderStyle = 'solid'; dom.style.borderWidth = '1px';
     if (el.shadow && el.neon==='none') dom.style.boxShadow=`0 ${el.shadow}px ${el.shadow*3}px rgba(0,0,0,.6)`;
 
   } else if (el.type === 'button') {
@@ -574,7 +788,7 @@ function renderEl(el) {
     sp.textContent = el.text;
     sp.style.cssText = `color:${el.textColor};font-family:'JetBrains Mono',monospace;font-size:12px;pointer-events:none;`;
     if (el.rbw) sp.classList.add('rbw');
-    dom.insertBefore(sp, rh);
+    dom.insertBefore(sp, firstHandle);
 
   } else if (el.type === 'textbox') {
     dom.style.background  = el.bg;
@@ -583,14 +797,14 @@ function renderEl(el) {
     const ta = document.createElement('textarea');
     ta.style.cssText = `width:100%;height:100%;background:transparent;border:none;outline:none;resize:none;color:${el.textColor};font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 6px;box-sizing:border-box;`;
     ta.placeholder = 'TextBox...';
-    dom.insertBefore(ta, rh);
+    dom.insertBefore(ta, firstHandle);
 
   } else if (el.type === 'label') {
     const sp = document.createElement('span');
     sp.textContent = el.text;
     sp.style.cssText = `color:${el.textColor};font-family:'JetBrains Mono',monospace;font-size:12px;pointer-events:none;`;
     if (el.rbw) sp.classList.add('rbw');
-    dom.insertBefore(sp, rh);
+    dom.insertBefore(sp, firstHandle);
 
   } else if (el.type === 'checkbox') {
     dom.style.cssText += 'display:flex;align-items:center;gap:8px;';
@@ -600,85 +814,188 @@ function renderEl(el) {
     sp.textContent = el.text;
     sp.style.cssText = `color:${el.textColor};font-size:12px;font-family:'JetBrains Mono',monospace;pointer-events:none;`;
     if (el.rbw) sp.classList.add('rbw');
-    dom.insertBefore(cb, rh); dom.insertBefore(sp, rh);
+    dom.insertBefore(cb, firstHandle);
+    dom.insertBefore(sp, firstHandle);
 
   } else if (el.type === 'slider') {
     dom.style.cssText += 'display:flex;align-items:center;';
     const inp = document.createElement('input');
     inp.type='range'; inp.min=0; inp.max=100; inp.value=50;
-    inp.style.cssText = 'width:100%;accent-color:#00d4ff;';
-    dom.insertBefore(inp, rh);
+    inp.style.cssText = 'width:100%;accent-color:#00d4ff;pointer-events:auto;';
+    dom.insertBefore(inp, firstHandle);
 
   } else if (el.type === 'dropdown') {
     dom.style.background  = el.bg;
     dom.style.borderColor = el.border;
     dom.style.borderStyle = 'solid'; dom.style.borderWidth = '1px';
-    const sel = document.createElement('select');
-    el.text.split('\n').forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; sel.appendChild(opt); });
-    sel.style.cssText = `width:100%;height:100%;background:transparent;border:none;color:${el.textColor};font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;padding:2px 6px;`;
-    dom.insertBefore(sel, rh);
+    const selEl = document.createElement('select');
+    el.text.split('\n').forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; selEl.appendChild(opt); });
+    selEl.style.cssText = `width:100%;height:100%;background:transparent;border:none;color:${el.textColor};font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;padding:2px 6px;`;
+    dom.insertBefore(selEl, firstHandle);
 
   } else if (el.type === 'separator') {
     dom.style.background = el.bg; dom.style.height = '2px';
+
+  } else if (el.type === 'panel') {
+    dom.style.background  = el.bg;
+    dom.style.borderColor = el.border.startsWith('t') ? 'transparent' : el.border;
+    dom.style.borderStyle = 'solid'; dom.style.borderWidth = '1px';
+    dom.style.overflow    = 'hidden';
+    dom.style.display     = 'flex'; dom.style.flexDirection = 'column';
+    if (el.shadow && el.neon==='none') dom.style.boxShadow=`0 ${el.shadow}px ${el.shadow*3}px rgba(0,0,0,.6)`;
+
+    // titlebar
+    const tb = document.createElement('div');
+    tb.className = 'panel-titlebar';
+    tb.style.background = hexToRgbaStr(el.border, 0.12);
+    tb.style.borderBottomColor = hexToRgbaStr(el.border, 0.3);
+
+    const ttxt = document.createElement('span');
+    ttxt.className = 'panel-title-text' + (el.rbw?' rbw':'');
+    ttxt.textContent = el.text;
+    ttxt.style.color = el.textColor;
+
+    const tdot = document.createElement('span');
+    tdot.className = 'panel-toggle-dot';
+    tdot.textContent = el.collapsed ? '▶' : '▼';
+    tdot.style.background = el.textColor;
+    tdot.addEventListener('touchstart', e=>{ e.stopPropagation(); togglePanel(el.id); }, {passive:true});
+    tdot.addEventListener('click', e=>{ e.stopPropagation(); togglePanel(el.id); });
+
+    tb.appendChild(ttxt); tb.appendChild(tdot);
+
+    // body area
+    const body = document.createElement('div');
+    body.className = 'panel-body' + (el.collapsed?' collapsed':'');
+    body.style.maxHeight = el.collapsed ? '0' : (el.h - 28)+'px';
+    body.style.flex = '1';
+
+    // dashed inner guide
+    const guide = document.createElement('div');
+    guide.style.cssText = `position:absolute;inset:6px;border:1px dashed rgba(255,255,255,.08);border-radius:4px;pointer-events:none;`;
+    guide.innerHTML = `<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;color:rgba(255,255,255,.15);white-space:nowrap;font-family:'JetBrains Mono',monospace;">drop elements here</span>`;
+    body.appendChild(guide);
+
+    dom.insertBefore(tb, firstHandle);
+    dom.insertBefore(body, firstHandle);
   }
 
   if (sel === el.id) dom.classList.add('sel');
 }
 
 // ─── TOUCH DRAG ───────────────────────────────────────────────────────────────
+// Key fix: don't call openSheet on touchstart — only select visually.
+// Only open sheet on touchend IF no movement happened (= it was a tap).
+// Double-tap (2 taps < 300ms with no movement) = open script.
 function attachTouch(dom, id) {
-  let startX, startY, elX, elY, moved;
+  let startX, startY, elX, elY;
+  let dragDist = 0;
+  let lastTapTime = 0;
+  const DRAG_THRESHOLD = 6; // px — less than this = tap, not drag
 
   dom.addEventListener('touchstart', e=>{
-    if (e.target.classList.contains('el-resize')) return;
-    selectEl(id);
+    // ignore touches on resize handles
+    if (e.target.classList.contains('el-rh')) return;
     const t = e.touches[0];
     startX = t.clientX; startY = t.clientY;
+    dragDist = 0;
     const el = getEl(id); elX = el.x; elY = el.y;
-    moved = false;
+
+    // visually mark selected without opening sheet yet
+    document.querySelectorAll('.el').forEach(d=>d.classList.remove('sel'));
+    dom.classList.add('sel');
+    sel = id;
+
     e.stopPropagation();
   }, {passive:true});
 
   dom.addEventListener('touchmove', e=>{
+    if (e.target.classList.contains('el-rh')) return;
     const t = e.touches[0];
     const dx = t.clientX - startX;
     const dy = t.clientY - startY;
-    if (Math.abs(dx)>4 || Math.abs(dy)>4) moved = true;
-    const el = getEl(id);
-    el.x = Math.max(0, Math.min(CW - el.w, elX + dx));
-    el.y = Math.max(0, Math.min(CH - el.h, elY + dy));
-    dom.style.left = el.x+'px';
-    dom.style.top  = el.y+'px';
+    dragDist = Math.sqrt(dx*dx + dy*dy);
+
+    if (dragDist > DRAG_THRESHOLD) {
+      // close sheet while dragging so it doesn't flap open
+      closeSheet();
+
+      const el = getEl(id);
+      el.x = Math.max(0, Math.min(CW - el.w, elX + dx));
+      el.y = Math.max(0, Math.min(CH - el.h, elY + dy));
+      dom.style.left = el.x+'px';
+      dom.style.top  = el.y+'px';
+    }
     e.preventDefault();
   }, {passive:false});
 
   dom.addEventListener('touchend', e=>{
-    if (moved) { const el=getEl(id); updateSheetPos(el); }
+    if (dragDist <= DRAG_THRESHOLD) {
+      // it was a tap — check double-tap
+      const now = Date.now();
+      if (now - lastTapTime < 320) {
+        // double-tap → open script
+        openScript(id);
+        lastTapTime = 0;
+      } else {
+        // single tap → open properties sheet
+        openSheet(getEl(id));
+        lastTapTime = now;
+      }
+    } else {
+      // drag ended — update sheet values if open but don't re-open
+      const el = getEl(id);
+      if (document.getElementById('props-sheet').classList.contains('open')) {
+        buildSheet(el);
+      }
+    }
+    dragDist = 0;
     e.stopPropagation();
   });
 }
 
 // ─── TOUCH RESIZE ─────────────────────────────────────────────────────────────
-function attachResizeTouch(rh, id) {
-  let sx, sy, sw, sh;
+// dx/dy: +1 grow in that axis, -1 shrink (flipping edge)
+// ax/ay: 1 = also move position (anchor on opposite side)
+function attachResizeTouch(rh, id, dx, dy, ax, ay) {
+  let sx, sy, sw, sh, sx0, sy0;
+
   rh.addEventListener('touchstart', e=>{
     const t = e.touches[0];
     sx = t.clientX; sy = t.clientY;
-    const el = getEl(id); sw = el.w; sh = el.h;
+    const el = getEl(id);
+    sw = el.w; sh = el.h;
+    sx0 = el.x; sy0 = el.y;
     e.stopPropagation(); e.preventDefault();
   }, {passive:false});
+
   rh.addEventListener('touchmove', e=>{
     const t = e.touches[0];
+    const deltaX = (t.clientX - sx) * dx;
+    const deltaY = (t.clientY - sy) * dy;
     const el = getEl(id);
-    el.w = Math.max(24, sw + (t.clientX - sx));
-    el.h = Math.max(10, sh + (t.clientY - sy));
     const dom = getDom(id);
-    dom.style.width  = el.w+'px';
-    dom.style.height = el.h+'px';
+
+    if (dx !== 0) {
+      const newW = Math.max(24, sw + deltaX);
+      if (ax) el.x = Math.max(0, sx0 + (sw - newW));
+      el.w = newW;
+      dom.style.width = el.w+'px';
+      if (ax) dom.style.left = el.x+'px';
+    }
+    if (dy !== 0) {
+      const newH = Math.max(10, sh + deltaY);
+      if (ay) el.y = Math.max(0, sy0 + (sh - newH));
+      el.h = newH;
+      dom.style.height = el.h+'px';
+      if (ay) dom.style.top = el.y+'px';
+    }
     e.preventDefault();
   }, {passive:false});
+
   rh.addEventListener('touchend', e=>{
-    const el=getEl(id); updateSheetPos(el);
+    const el = getEl(id);
+    if (document.getElementById('props-sheet').classList.contains('open')) buildSheet(el);
     e.stopPropagation();
   });
 }
@@ -691,13 +1008,13 @@ document.getElementById('canvas-area').addEventListener('touchstart', e=>{
 });
 
 // ─── SELECT ───────────────────────────────────────────────────────────────────
-function selectEl(id) {
+function selectEl(id, openProps) {
   document.querySelectorAll('.el').forEach(d=>d.classList.remove('sel'));
   sel = id;
   if (id) {
     const dom = getDom(id);
     if (dom) dom.classList.add('sel');
-    openSheet(getEl(id));
+    if (openProps) openSheet(getEl(id));
   } else {
     closeSheet();
   }
@@ -712,19 +1029,13 @@ function openSheet(el) {
 function closeSheet() {
   document.getElementById('props-sheet').classList.remove('open');
 }
-function updateSheetPos(el) {
-  if (sel === el.id && document.getElementById('props-sheet').classList.contains('open')) {
-    buildSheet(el);
-  }
-}
-
 function buildSheet(el) {
   document.getElementById('sheet-title').textContent = el.label + ' · ' + el.type;
   const body = document.getElementById('sheet-body');
-  const hasText   = ['button','label','checkbox','textbox','dropdown'].includes(el.type);
-  const hasBg     = ['frame','button','textbox','dropdown'].includes(el.type);
-  const hasRadius = ['frame','button','textbox','dropdown'].includes(el.type);
-  const hasShadow = ['frame','button'].includes(el.type);
+  const hasText   = ['button','label','checkbox','textbox','dropdown','panel'].includes(el.type);
+  const hasBg     = ['frame','button','textbox','dropdown','panel'].includes(el.type);
+  const hasRadius = ['frame','button','textbox','dropdown','panel'].includes(el.type);
+  const hasShadow = ['frame','button','panel'].includes(el.type);
 
   body.innerHTML = `
   <div class="s-section">
@@ -796,6 +1107,20 @@ function buildSheet(el) {
       <input class="s-check" type="checkbox" ${el.rbw?'checked':''} onchange="sp(${el.id},'rbw',this.checked)"></div>
   </div>` : ''}
 
+  ${el.type==='panel' ? `
+  <div class="s-section">
+    <div class="s-sec-hd">Panel State</div>
+    <div class="s-row">
+      <span class="s-label">State</span>
+      <span style="font-size:11px;color:${el.collapsed?'var(--warn)':'var(--green)'}">
+        ${el.collapsed ? '▶ Collapsed' : '▼ Expanded'}
+      </span>
+    </div>
+    <div class="btn" onclick="togglePanel(${el.id})" style="width:100%;text-align:center;padding:10px;background:${el.collapsed?'var(--green)':'var(--warn)'};color:#000;border-color:transparent;margin-bottom:4px">
+      ${el.collapsed ? '🔽 Expand Panel' : '🔼 Collapse Panel'}
+    </div>
+  </div>` : ''}
+
   <div class="s-section">
     <div class="s-sec-hd">Script</div>
     <div class="btn btn-p" style="width:100%;text-align:center;padding:10px" onclick="openScript(${el.id})">✏️ Edit Script (double-tap)</div>
@@ -816,11 +1141,81 @@ function sp(id, key, val) {
   const el = getEl(id);
   if (!el) return;
   el[key] = val;
-  renderEl(el);
-  // refresh sheet live for radius/opacity
-  if (['radius','opacity','shadow','neon','bg','border','text','textColor','rbw'].includes(key)) {
+
+  // instant DOM update for position/size (no full re-render needed)
+  const dom = getDom(id);
+  if (dom) {
+    if (key === 'x') dom.style.left = val + 'px';
+    else if (key === 'y') dom.style.top = val + 'px';
+    else if (key === 'w') dom.style.width = val + 'px';
+    else if (key === 'h') dom.style.height = val + 'px';
+    else if (key === 'opacity') dom.style.opacity = val;
+    else if (key === 'radius') dom.style.borderRadius = val + 'px';
+    else renderEl(el); // full re-render for visual props
+  }
+
+  if (['radius','opacity','shadow','neon','bg','border','text','textColor','rbw','x','y','w','h'].includes(key)) {
     buildSheet(el);
   }
+}
+
+// ─── SYNTAX HIGHLIGHTING ─────────────────────────────────────────────────────
+let syntaxOn = true;
+
+function toggleSyntax() {
+  syntaxOn = !syntaxOn;
+  const btn = document.getElementById('syntax-toggle');
+  const disp = document.getElementById('syntax-display');
+  if (syntaxOn) {
+    btn.textContent = 'SYNTAX ON';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    disp.style.display = '';
+    document.getElementById('script-editor').style.color = 'transparent';
+    onScriptInput();
+  } else {
+    btn.textContent = 'SYNTAX OFF';
+    btn.style.borderColor = 'var(--text2)';
+    btn.style.color = 'var(--text2)';
+    disp.style.display = 'none';
+    document.getElementById('script-editor').style.color = '#e2e2e8';
+  }
+}
+
+function luaHighlight(code) {
+  // escape HTML first
+  const esc = code
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+
+  return esc
+    // strings
+    .replace(/(["'])(?:(?=(\\?))\2[\s\S])*?\1/g, s=>`<span style="color:#a8e6cf">${s}</span>`)
+    // comments
+    .replace(/(--[^\n]*)/g, s=>`<span style="color:#555">${s}</span>`)
+    // keywords
+    .replace(/\b(local|function|end|if|then|else|elseif|for|do|while|repeat|until|return|and|or|not|in|break|true|false|nil)\b/g,
+      s=>`<span style="color:#c792ea">${s}</span>`)
+    // built-in globals
+    .replace(/\b(game|workspace|script|print|warn|error|wait|task|pairs|ipairs|tostring|tonumber|type|typeof|math|table|string|os|tick|time|unpack|select|pcall|xpcall|rawget|rawset|setmetatable|getmetatable|require|loadstring|Instance|Vector3|Vector2|CFrame|UDim2|UDim|Color3|BrickColor|TweenInfo|Enum|Ray|Region3|NumberRange|ColorSequence|NumberSequence)\b/g,
+      s=>`<span style="color:#82aaff">${s}</span>`)
+    // method calls / properties
+    .replace(/(\.[A-Za-z_][A-Za-z0-9_]*)\s*(?=\()/g, s=>`<span style="color:#ffcb6b">${s}</span>`)
+    // numbers
+    .replace(/\b(\d+\.?\d*)\b/g, s=>`<span style="color:#f78c6c">${s}</span>`)
+    // operators
+    .replace(/([+\-*\/=~&lt;&gt;%#])/g, s=>`<span style="color:#89ddff">${s}</span>`);
+}
+
+function onScriptInput() {
+  if (!syntaxOn) return;
+  const ta = document.getElementById('script-editor');
+  const disp = document.getElementById('syntax-display');
+  if (!disp) return;
+  disp.innerHTML = luaHighlight(ta.value) + '\n';
+  // sync scroll
+  disp.scrollTop = ta.scrollTop;
 }
 
 // ─── SCRIPT EDITOR ───────────────────────────────────────────────────────────
@@ -828,71 +1223,443 @@ function openScript(id) {
   const el = getEl(id);
   if (!el) return;
   scriptTarget = id;
-  document.getElementById('sm-elname').textContent = el.label;
-  const evMap = { button:'OnClick', textbox:'OnChange', checkbox:'OnToggle', slider:'OnChange', dropdown:'OnSelect', frame:'OnLoad', label:'OnLoad' };
-  document.getElementById('sm-event').textContent = `-- Event: ${evMap[el.type]||'OnLoad'}`;
-  document.getElementById('script-editor').value = el.script;
+  document.getElementById('sm-elname').textContent = `${el.label} (${el.type})`;
+  const evMap = {
+    button:'MouseButton1Click',
+    textbox:'FocusLost',
+    checkbox:'MouseButton1Click',
+    slider:'Changed',
+    dropdown:'Changed',
+    frame:'OnLoad',
+    label:'OnLoad'
+  };
+  document.getElementById('sm-event').textContent =
+    `-- Event: ${evMap[el.type]||'OnLoad'} | Element: "${el.label}"`;
+  const ta = document.getElementById('script-editor');
+  ta.value = el.script || '';
+  // sync syntax display
+  setTimeout(onScriptInput, 10);
   document.getElementById('script-modal').classList.add('open');
+  // scroll sync
+  ta.onscroll = () => {
+    const d = document.getElementById('syntax-display');
+    if (d) d.scrollTop = ta.scrollTop;
+  };
 }
+
 function closeScript() {
   document.getElementById('script-modal').classList.remove('open');
   scriptTarget = null;
 }
+
 function saveScript() {
   if (scriptTarget === null) { closeScript(); return; }
   const el = getEl(scriptTarget);
   if (el) {
-    el.script = document.getElementById('script-editor').value;
-    showToast('Script saved ✓');
+    el.script = document.getElementById('script-editor').value.trim();
+    showToast(`Script saved ✓`);
+    // rebuild sheet to show updated line count
+    if (document.getElementById('props-sheet').classList.contains('open')) buildSheet(el);
   }
   closeScript();
 }
-function clearSc() { document.getElementById('script-editor').value = ''; }
-function injectCode(code) {
-  const ta = document.getElementById('script-editor');
-  const p = ta.selectionStart || ta.value.length;
-  ta.value = ta.value.slice(0,p) + code + ta.value.slice(p);
+
+function clearSc() {
+  document.getElementById('script-editor').value = '';
+  onScriptInput();
 }
 
-// ─── SNIPPETS ────────────────────────────────────────────────────────────────
-const snippets = {
-  notify:`game:GetService("StarterGui"):SetCore("SendNotification",{\n  Title="LSM",\n  Text="Hello!",\n  Duration=5\n})`,
-  loop:`for i=1,10 do\n  print("Step "..i)\n  wait(0.1)\nend`,
-  tween:`local ts=game:GetService("TweenService")\nlocal info=TweenInfo.new(0.5)\nts:Create(part,info,{Position=Vector3.new(0,10,0)}):Play()`,
-  remote:`game.ReplicatedStorage:WaitForChild("RemoteEvent"):FireServer("action",{})`
+function injectCode(code) {
+  const ta = document.getElementById('script-editor');
+  const p = ta.selectionStart !== undefined ? ta.selectionStart : ta.value.length;
+  ta.value = ta.value.slice(0,p) + code + ta.value.slice(p);
+  ta.selectionStart = ta.selectionEnd = p + code.length;
+  ta.focus();
+  onScriptInput();
+}
+
+// ─── DRAG FROM DRAWER TO CANVAS ──────────────────────────────────────────────
+let drawerDragType = null;
+let drawerDragActive = false;
+
+function startDragFromDrawer(e, type, label) {
+  // prevent the tap from also firing onclick
+  e.stopPropagation();
+  drawerDragType = type;
+  drawerDragActive = false;
+  const ghost = document.getElementById('drag-ghost');
+  ghost.textContent = label;
+
+  const t0 = e.touches[0];
+  let lastX = t0.clientX, lastY = t0.clientY;
+
+  const onMove = ev => {
+    ev.preventDefault(); // must prevent scroll so drag works
+    const t = ev.touches[0];
+    lastX = t.clientX; lastY = t.clientY;
+    drawerDragActive = true;
+    ghost.classList.add('active');
+    ghost.style.left = t.clientX + 'px';
+    ghost.style.top  = t.clientY + 'px';
+    if (t.clientX > 200) closeDrawer();
+  };
+
+  const onEnd = ev => {
+    ghost.classList.remove('active');
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onEnd);
+
+    if (!drawerDragActive) { drawerDragType = null; return; }
+
+    const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+    const dropX = Math.round(lastX - canvasRect.left);
+    const dropY = Math.round(lastY - canvasRect.top);
+
+    // clamp to canvas — even if dropped slightly outside
+    const ex = Math.max(4, Math.min(CW - 30, dropX));
+    const ey = Math.max(4, Math.min(CH - 20, dropY));
+    addEl(drawerDragType, ex, ey);
+
+    drawerDragType = null;
+    drawerDragActive = false;
+  };
+
+  // {passive:false} critical — allows preventDefault to block scroll
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onEnd);
+}
+
+// ─── SNIPPET EDITOR ──────────────────────────────────────────────────────────
+let currentSnipType = null;
+
+const snipDefs = {
+  notify: {
+    title: '🔔 Notify',
+    icon: '🔔',
+    fields: [
+      { id:'nf-title', label:'Title', type:'input', default:'LSM' },
+      { id:'nf-text',  label:'Message', type:'textarea', default:'Hello from LSM!' },
+      { id:'nf-dur',   label:'Duration (sec)', type:'input', default:'5' },
+    ],
+    build: f => `game:GetService("StarterGui"):SetCore("SendNotification", {
+  Title = "${f['nf-title']}",
+  Text  = "${f['nf-text']}",
+  Duration = ${f['nf-dur']}
+})`,
+  },
+  loop: {
+    title: '🔁 Loop',
+    icon: '🔁',
+    fields: [
+      { id:'lp-from', label:'From', type:'input', default:'1' },
+      { id:'lp-to',   label:'To',   type:'input', default:'10' },
+      { id:'lp-var',  label:'Variable name', type:'input', default:'i' },
+      { id:'lp-wait', label:'Wait (sec)', type:'input', default:'0.1' },
+      { id:'lp-body', label:'Body code', type:'textarea', default:'print("Step " .. i)' },
+    ],
+    build: f => `for ${f['lp-var']} = ${f['lp-from']}, ${f['lp-to']} do
+  ${f['lp-body']}
+  wait(${f['lp-wait']})
+end`,
+  },
+  tween: {
+    title: '🎞️ TweenService',
+    icon: '🎞️',
+    fields: [
+      { id:'tw-obj',   label:'Object (variable name)', type:'input', default:'myPart' },
+      { id:'tw-time',  label:'Duration (sec)', type:'input', default:'0.5' },
+      { id:'tw-style', label:'EasingStyle', type:'select', options:['Quad','Linear','Sine','Back','Bounce','Elastic','Exponential','Circular','Cubic','Quart','Quint'], default:'Quad' },
+      { id:'tw-dir',   label:'EasingDirection', type:'select', options:['Out','In','InOut'], default:'Out' },
+      { id:'tw-props', label:'Properties (Lua table)', type:'textarea', default:'Position = Vector3.new(0, 10, 0)' },
+    ],
+    build: f => `local TweenService = game:GetService("TweenService")
+local tweenInfo = TweenInfo.new(
+  ${f['tw-time']},
+  Enum.EasingStyle.${f['tw-style']},
+  Enum.EasingDirection.${f['tw-dir']}
+)
+local tween = TweenService:Create(${f['tw-obj']}, tweenInfo, {
+  ${f['tw-props']}
+})
+tween:Play()`,
+  },
+  remote: {
+    title: '📡 RemoteEvent',
+    icon: '📡',
+    fields: [
+      { id:'re-name',   label:'RemoteEvent name', type:'input', default:'MyEvent' },
+      { id:'re-type',   label:'Type', type:'select', options:['FireServer','FireClient','FireAllClients'], default:'FireServer' },
+      { id:'re-player', label:'Player variable (FireClient only)', type:'input', default:'player' },
+      { id:'re-args',   label:'Arguments (comma separated)', type:'input', default:'"action", {data = true}' },
+    ],
+    build: f => {
+      const remote = `game.ReplicatedStorage:WaitForChild("${f['re-name']}")`;
+      if (f['re-type'] === 'FireServer') return `${remote}:FireServer(${f['re-args']})`;
+      if (f['re-type'] === 'FireClient') return `${remote}:FireClient(${f['re-player']}, ${f['re-args']})`;
+      return `${remote}:FireAllClients(${f['re-args']})`;
+    },
+  },
 };
-function openSnippet(name) {
-  if (!scriptTarget) { showToast('Double-tap an element first'); return; }
-  if (snippets[name]) {
+
+function openSnipEditor(type) {
+  currentSnipType = type;
+  const def = snipDefs[type];
+  document.getElementById('snip-modal-title').textContent = def.title;
+
+  let html = '';
+  def.fields.forEach(f => {
+    html += `<div class="snip-field"><label>${f.label}</label>`;
+    if (f.type === 'input') {
+      html += `<input class="snip-finput" id="${f.id}" value="${f.default}" oninput="updateSnipPreview()">`;
+    } else if (f.type === 'textarea') {
+      html += `<textarea class="snip-ftextarea" id="${f.id}" oninput="updateSnipPreview()">${f.default}</textarea>`;
+    } else if (f.type === 'select') {
+      html += `<select class="snip-finput" id="${f.id}" onchange="updateSnipPreview()" style="padding:7px 8px">`;
+      f.options.forEach(o => html += `<option value="${o}" ${o===f.default?'selected':''}>${o}</option>`);
+      html += `</select>`;
+    }
+    html += `</div>`;
+  });
+
+  html += `<div class="snip-field"><label>Preview</label><div class="snip-preview-box" id="snip-preview"></div></div>`;
+  document.getElementById('snip-modal-body').innerHTML = html;
+  updateSnipPreview();
+  document.getElementById('snip-modal').classList.add('open');
+}
+
+function getSnipValues() {
+  const def = snipDefs[currentSnipType];
+  const f = {};
+  def.fields.forEach(field => {
+    const el = document.getElementById(field.id);
+    f[field.id] = el ? el.value : field.default;
+  });
+  return def.build(f);
+}
+
+function updateSnipPreview() {
+  try {
+    const code = getSnipValues();
+    document.getElementById('snip-preview').textContent = code;
+  } catch(e) {}
+}
+
+function insertSnip() {
+  const code = getSnipValues();
+  // if script editor is open, insert there
+  const scriptModal = document.getElementById('script-modal');
+  if (scriptModal.classList.contains('open')) {
     const ta = document.getElementById('script-editor');
-    ta.value += '\n' + snippets[name];
-    document.getElementById('script-modal').classList.add('open');
+    const p = ta.selectionStart || ta.value.length;
+    ta.value = ta.value.slice(0,p) + '\n' + code + ta.value.slice(p);
+    closeSnipModal();
+    showToast('Inserted into script ✓');
+  } else if (sel) {
+    // append to selected element's script
+    const el = getEl(sel);
+    el.script = (el.script || '') + '\n' + code;
+    closeSnipModal();
+    showToast(`Inserted into ${el.label} ✓`);
+  } else {
+    // just copy it
+    copySnip();
   }
+}
+
+function copySnip() {
+  const code = getSnipValues();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(() => showToast('Snippet copied ✓'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = code; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Snippet copied ✓');
+  }
+}
+
+function closeSnipModal() {
+  document.getElementById('snip-modal').classList.remove('open');
+  currentSnipType = null;
+}
+
+// ─── LEGACY SNIPPET HELPER (keep for script editor quick inserts) ─────────────
+function openSnippet(name) {
+  openSnipEditor(name);
 }
 
 // ─── LUA GENERATOR ───────────────────────────────────────────────────────────
 function generateLua() {
-  let c = `-- ================================================\n-- Generated by LSM (Lua Script Maker) Mobile\n-- Project: ${projectName}.lua\n-- Elements: ${elements.length}\n-- ================================================\n\n`;
-  c += `${globalScript}\n\n`;
-  c += `local ScreenGui=Instance.new("ScreenGui")\nScreenGui.Name="${projectName}"\nScreenGui.Parent=game.Players.LocalPlayer.PlayerGui\n\n`;
-  c += `local Main=Instance.new("Frame")\nMain.Size=UDim2.new(0,${CW},0,${CH})\nMain.Position=UDim2.new(0.5,-${CW/2},0.5,-${CH/2})\nMain.BackgroundColor3=Color3.fromRGB(24,24,31)\nMain.Parent=ScreenGui\n\n`;
-  const tmap={frame:'Frame',button:'TextButton',textbox:'TextBox',label:'TextLabel',checkbox:'Frame',slider:'Frame',dropdown:'Frame',separator:'Frame'};
-  elements.forEach(el=>{
-    const n=el.label.replace(/\s+/g,'_');
-    c+=`-- ${el.type.toUpperCase()}: ${n}\n`;
-    c+=`local ${n}=Instance.new("${tmap[el.type]||'Frame'}")\n`;
-    c+=`${n}.Name="${n}"\n${n}.Size=UDim2.new(0,${el.w},0,${el.h})\n${n}.Position=UDim2.new(0,${el.x},0,${el.y})\n`;
-    if (!el.bg.startsWith('t')) { const rgb=h2r(el.bg); if(rgb)c+=`${n}.BackgroundColor3=Color3.fromRGB(${rgb})\n`; }
-    else c+=`${n}.BackgroundTransparency=1\n`;
-    if(el.opacity<1) c+=`${n}.BackgroundTransparency=${(1-el.opacity).toFixed(2)}\n`;
-    if(['button','label','textbox'].includes(el.type)){c+=`${n}.Text="${el.text}"\n`; const tc=h2r(el.textColor); if(tc)c+=`${n}.TextColor3=Color3.fromRGB(${tc})\n`;}
-    if(el.radius>0){c+=`local UICorner${n}=Instance.new("UICorner")\nUICorner${n}.CornerRadius=UDim.new(0,${el.radius})\nUICorner${n}.Parent=${n}\n`;}
-    c+=`${n}.Parent=Main\n`;
-    if(el.script&&el.script.trim()&&!el.script.trim().startsWith('--')){
-      const ev={button:'MouseButton1Click',textbox:'FocusLost',checkbox:'MouseButton1Click',slider:'Changed',dropdown:'Changed'}[el.type]||'MouseButton1Click';
-      if(!['label','frame','separator'].includes(el.type)){c+=`\n${n}.${ev}:Connect(function()\n`;el.script.split('\n').forEach(l=>{c+=`  ${l}\n`;});c+=`end)\n`;}
+  let c = `-- ================================================\n`;
+  c += `-- Generated by LSM (Lua Script Maker)\n`;
+  c += `-- Project: ${projectName}.lua  |  Elements: ${elements.length}\n`;
+  c += `-- ================================================\n\n`;
+  if (globalScript.trim() && !globalScript.trim().startsWith('-- Global')) {
+    c += globalScript + '\n\n';
+  }
+  c += `local ScreenGui = Instance.new("ScreenGui")\n`;
+  c += `ScreenGui.Name = "${projectName}"\n`;
+  c += `ScreenGui.ResetOnSpawn = false\n`;
+  c += `ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")\n\n`;
+
+  const tmap = {
+    frame:    'Frame',
+    button:   'TextButton',
+    textbox:  'TextBox',
+    label:    'TextLabel',
+    checkbox: 'TextButton',
+    slider:   'Frame',
+    dropdown: 'Frame',
+    separator:'Frame',
+    panel:    'Frame',
+  };
+
+  elements.forEach(el => {
+    const n = el.label.replace(/[^A-Za-z0-9_]/g, '_');
+    const inst = tmap[el.type] || 'Frame';
+    c += `-- [ ${el.type.toUpperCase()} ] ${n}\n`;
+    c += `local ${n} = Instance.new("${inst}")\n`;
+    c += `${n}.Name = "${n}"\n`;
+    c += `${n}.Size = UDim2.new(0, ${Math.round(el.w)}, 0, ${Math.round(el.h)})\n`;
+    c += `${n}.Position = UDim2.new(0, ${Math.round(el.x)}, 0, ${Math.round(el.y)})\n`;
+
+    // background
+    if (!el.bg || el.bg.startsWith('t')) {
+      c += `${n}.BackgroundTransparency = 1\n`;
+    } else {
+      const rgb = h2r(el.bg);
+      if (rgb) c += `${n}.BackgroundColor3 = Color3.fromRGB(${rgb})\n`;
+      if (el.opacity < 1) c += `${n}.BackgroundTransparency = ${(1 - el.opacity).toFixed(2)}\n`;
     }
-    c+='\n';
+
+    // text elements
+    if (['button','label','textbox'].includes(el.type)) {
+      const safeText = (el.text||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+      c += `${n}.Text = "${safeText}"\n`;
+      const tc = h2r(el.textColor);
+      if (tc) c += `${n}.TextColor3 = Color3.fromRGB(${tc})\n`;
+      c += `${n}.TextSize = 14\n`;
+      c += `${n}.Font = Enum.Font.GothamMedium\n`;
+    }
+
+    // checkbox as TextButton
+    if (el.type === 'checkbox') {
+      const safeText = (el.text||'').replace(/"/g,'\\"');
+      c += `${n}.Text = "☐ ${safeText}"\n`;
+      c += `${n}.TextColor3 = Color3.fromRGB(${h2r(el.textColor)||'226,226,236'})\n`;
+      c += `${n}.TextSize = 14\n`;
+      c += `${n}.Font = Enum.Font.GothamMedium\n`;
+      c += `${n}.BackgroundTransparency = 1\n`;
+    }
+
+    // border (stroke)
+    if (el.border && !el.border.startsWith('t')) {
+      const bc = h2r(el.border);
+      if (bc) {
+        c += `local Stroke_${n} = Instance.new("UIStroke")\n`;
+        c += `Stroke_${n}.Color = Color3.fromRGB(${bc})\n`;
+        c += `Stroke_${n}.Thickness = 1\n`;
+        c += `Stroke_${n}.Parent = ${n}\n`;
+      }
+    }
+
+    // corner radius
+    if (el.radius > 0) {
+      c += `local Corner_${n} = Instance.new("UICorner")\n`;
+      c += `Corner_${n}.CornerRadius = UDim.new(0, ${el.radius})\n`;
+      c += `Corner_${n}.Parent = ${n}\n`;
+    }
+
+    // neon glow — UIStroke + ImageLabel glow behind element
+    if (el.neon && el.neon !== 'none') {
+      const neonColors = {
+        blue:   '0, 212, 255',
+        purple: '124, 58, 237',
+        green:  '16, 185, 129',
+        pink:   '236, 72, 153',
+      };
+      const nc = neonColors[el.neon] || '0, 212, 255';
+      // UIStroke for border glow
+      c += `local NeonStroke_${n} = Instance.new("UIStroke")\n`;
+      c += `NeonStroke_${n}.Color = Color3.fromRGB(${nc})\n`;
+      c += `NeonStroke_${n}.Thickness = 2\n`;
+      c += `NeonStroke_${n}.ApplyStrokeMode = Enum.ApplyStrokeMode.Border\n`;
+      c += `NeonStroke_${n}.Parent = ${n}\n`;
+      // ImageLabel for outer glow effect (uses a blurred white square image)
+      c += `local Glow_${n} = Instance.new("ImageLabel")\n`;
+      c += `Glow_${n}.Name = "Glow"\n`;
+      c += `Glow_${n}.AnchorPoint = Vector2.new(0.5, 0.5)\n`;
+      c += `Glow_${n}.BackgroundTransparency = 1\n`;
+      c += `Glow_${n}.Position = UDim2.new(0.5, 0, 0.5, 0)\n`;
+      c += `Glow_${n}.Size = UDim2.new(1, 24, 1, 24)\n`;
+      c += `Glow_${n}.ZIndex = ${n}.ZIndex - 1\n`;
+      // Standard Roblox rounded glow image asset
+      c += `Glow_${n}.Image = "rbxassetid://5028857084"\n`;
+      c += `Glow_${n}.ImageColor3 = Color3.fromRGB(${nc})\n`;
+      c += `Glow_${n}.ImageTransparency = 0.5\n`;
+      c += `Glow_${n}.ScaleType = Enum.ScaleType.Slice\n`;
+      c += `Glow_${n}.SliceCenter = Rect.new(24, 24, 276, 276)\n`;
+      c += `Glow_${n}.Parent = ${n}\n`;
+    }
+
+    // panel title label
+    if (el.type === 'panel') {
+      const safeTitle = (el.text||'Panel').replace(/"/g,'\\"');
+      c += `local Title_${n} = Instance.new("TextLabel")\n`;
+      c += `Title_${n}.Size = UDim2.new(1, 0, 0, 28)\n`;
+      c += `Title_${n}.BackgroundTransparency = 1\n`;
+      c += `Title_${n}.Text = "${safeTitle}"\n`;
+      c += `Title_${n}.TextColor3 = Color3.fromRGB(${h2r(el.textColor)||'0,212,255'})\n`;
+      c += `Title_${n}.TextSize = 13\n`;
+      c += `Title_${n}.Font = Enum.Font.GothamBold\n`;
+      c += `Title_${n}.Parent = ${n}\n`;
+    }
+
+    c += `${n}.Parent = ScreenGui\n`;
+
+    // scripts — only if has real code (not just comments)
+    const scriptLines = (el.script||'').split('\n').filter(l => l.trim() && !l.trim().startsWith('--'));
+    if (scriptLines.length > 0) {
+      const evMap = {
+        button:   'MouseButton1Click',
+        textbox:  'FocusLost',
+        checkbox: 'MouseButton1Click',
+        slider:   'Changed',
+        dropdown: 'Changed',
+      };
+      const ev = evMap[el.type];
+      if (ev) {
+        if (el.type === 'checkbox') {
+          c += `\nlocal ${n}_checked = false\n`;
+          c += `${n}.${ev}:Connect(function()\n`;
+          c += `  ${n}_checked = not ${n}_checked\n`;
+          c += `  ${n}.Text = (${n}_checked and "☑ " or "☐ ") .. "${(el.text||'').replace(/"/g,'\\"')}"\n`;
+          scriptLines.forEach(l => { c += `  ${l}\n`; });
+          c += `end)\n`;
+        } else if (el.type === 'textbox') {
+          c += `\n${n}.${ev}:Connect(function(enterPressed)\n`;
+          scriptLines.forEach(l => { c += `  ${l}\n`; });
+          c += `end)\n`;
+        } else {
+          c += `\n${n}.${ev}:Connect(function()\n`;
+          scriptLines.forEach(l => { c += `  ${l}\n`; });
+          c += `end)\n`;
+        }
+      }
+    }
+    // rainbow text — TweenService color cycle
+    if (el.rbw && ['button','label','textbox'].includes(el.type)) {
+      c += `\n-- Rainbow text for ${n}\n`;
+      c += `local _rs${n} = game:GetService("RunService")\n`;
+      c += `local _t${n} = 0\n`;
+      c += `_rs${n}.Heartbeat:Connect(function(dt)\n`;
+      c += `  _t${n} = (_t${n} + dt * 0.4) % 1\n`;
+      c += `  ${n}.TextColor3 = Color3.fromHSV(_t${n}, 1, 1)\n`;
+      c += `end)\n`;
+    }
+
+    c += '\n';
   });
   return c;
 }
@@ -910,6 +1677,39 @@ function saveLua() {
   a.download = projectName+'.lua';
   a.click();
   showToast(`Saved ${projectName}.lua ✓`);
+}
+
+// ─── CODE VIEWER ─────────────────────────────────────────────────────────────
+function openCodeViewer() {
+  const code = generateLua();
+  document.getElementById('cv-filename').textContent = projectName + '.lua';
+  document.getElementById('cv-stats').innerHTML =
+    `📦 <b style="color:var(--accent)">${elements.length}</b> elements &nbsp;·&nbsp; ` +
+    `📄 <b style="color:var(--green)">${code.split('\n').length}</b> lines &nbsp;·&nbsp; ` +
+    `💾 <b style="color:var(--warn)">${(new Blob([code]).size/1024).toFixed(1)}kb</b>`;
+  document.getElementById('code-display').textContent = code;
+  document.getElementById('code-modal').classList.add('open');
+}
+function closeCodeViewer() {
+  document.getElementById('code-modal').classList.remove('open');
+}
+function copyCode() {
+  const code = document.getElementById('code-display').textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(()=>{
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = '✅ Copied!';
+      btn.style.background = 'var(--green)';
+      setTimeout(()=>{ btn.innerHTML='📋 Copy Script'; btn.style.background='var(--accent2)'; }, 2000);
+    });
+  } else {
+    // fallback for older mobile browsers
+    const ta = document.createElement('textarea');
+    ta.value = code; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Copied to clipboard ✓');
+  }
 }
 
 // ─── DELETE / DUPLICATE ───────────────────────────────────────────────────────
@@ -933,7 +1733,7 @@ function duplicateSelected() {
   const el=getEl(sel);
   const ne=JSON.parse(JSON.stringify(el));
   ne.id=idCnt++; ne.x+=14; ne.y+=14; ne.label=el.label+'_copy';
-  elements.push(ne); renderEl(ne); selectEl(ne.id);
+  elements.push(ne); renderEl(ne); selectEl(ne.id, true);
   showToast('Duplicated ✓');
 }
 
@@ -996,6 +1796,49 @@ function showToast(msg) {
   t.textContent=msg; t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+// ─── PANEL COLLAPSE ───────────────────────────────────────────────────────────
+function togglePanel(id) {
+  const el = getEl(id);
+  if (!el || el.type !== 'panel') return;
+  el.collapsed = !el.collapsed;
+  renderEl(el);
+  updateFab();
+  showToast(el.collapsed ? '🗂️ Panel collapsed' : '🗂️ Panel expanded');
+}
+
+function fabAction() {
+  // if selected panel → toggle it
+  if (sel) {
+    const el = getEl(sel);
+    if (el && el.type === 'panel') { togglePanel(sel); return; }
+  }
+  // otherwise toggle ALL panels
+  const panels = elements.filter(e=>e.type==='panel');
+  if (!panels.length) { showToast('Add a Panel first'); return; }
+  const anyOpen = panels.some(p=>!p.collapsed);
+  panels.forEach(p=>{ p.collapsed = anyOpen; renderEl(p); });
+  showToast(anyOpen ? '🗂️ All panels collapsed' : '🗂️ All panels expanded');
+  updateFab();
+}
+
+function updateFab() {
+  const fab = document.getElementById('fab');
+  const lbl = document.getElementById('fab-label');
+  const panels = elements.filter(e=>e.type==='panel');
+  if (!panels.length) { fab.textContent='🗂️'; lbl.textContent='ADD PANEL'; return; }
+  const anyOpen = panels.some(p=>!p.collapsed);
+  fab.textContent = anyOpen ? '🔼' : '🔽';
+  lbl.textContent = anyOpen ? 'COLLAPSE' : 'EXPAND';
+}
+
+function hexToRgbaStr(hex, alpha) {
+  if (!hex || hex.startsWith('t')) return `rgba(0,0,0,${alpha})`;
+  const r=parseInt(hex.slice(1,3),16);
+  const g=parseInt(hex.slice(3,5),16);
+  const b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
